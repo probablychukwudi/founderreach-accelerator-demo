@@ -13,6 +13,11 @@
     "preview": "vite preview --host 0.0.0.0 --port 3000"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.71",
+    "@composio/core": "^0.6.10",
+    "@composio/vercel": "^0.6.10",
+    "@vercel/analytics": "^2.0.1",
+    "ai": "^6.0.168",
     "concurrently": "^9.2.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",

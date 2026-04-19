@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { track } from "@vercel/analytics";
 import { GuidedTour } from "./components/GuidedTour";
+import { LaunchPage } from "./components/LaunchPage";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { Shell } from "./components/Shell";
 import { Toast } from "./components/Toast";
@@ -54,13 +56,13 @@ const TOUR_STEPS = [
     tab: "chat",
   },
   {
-    id: "agent-rail",
-    selector: '[data-tour="agent-rail"]',
-    title: "The 24-agent operating rail",
+    id: "run-context",
+    selector: '[data-tour="run-context"]',
+    title: "Run context and specialist visibility",
     description:
-      "Every specialist sits in the left rail. Signals glow green for the current mode, red while running, and yellow when something is pending or needs attention.",
-    hint: "Hover any agent to inspect its process, prompt preview, and a plain-language explanation of how it works.",
-    placement: "right",
+      "The right sidebar summarizes the active run, shows which specialists are involved, and makes live-vs-idle signals legible without overwhelming the main workspace.",
+    hint: "This is the fast judge view of what the run is doing, which agents are involved, and what artifacts were produced.",
+    placement: "left",
     duration: 3600,
     tab: "chat",
   },
@@ -122,7 +124,31 @@ const TOUR_STEPS = [
   },
 ];
 
+function getInitialRoute() {
+  if (typeof window === "undefined") return "/app";
+  return window.location.pathname.startsWith("/app") ? "/app" : "/";
+}
+
+function buildActionStatus(actionId, mode, status) {
+  if (mode === "Demo Mode") return { mode: "demo", label: "Demo-safe" };
+
+  if (actionId === "sendEmail") {
+    if (status.integrations?.gmail?.connected) return { mode: "live", label: "Live" };
+    if (status.services?.composio?.configured) return { mode: "needs-account", label: "Needs account" };
+    return { mode: "needs-keys", label: "Needs keys" };
+  }
+
+  if (actionId === "bookMeeting") {
+    if (status.integrations?.googleCalendar?.connected) return { mode: "live", label: "Live" };
+    if (status.services?.composio?.configured) return { mode: "needs-account", label: "Needs account" };
+    return { mode: "needs-keys", label: "Needs keys" };
+  }
+
+  return { mode: "demo", label: "Demo-safe" };
+}
+
 export default function App() {
+  const [route, setRoute] = useState(getInitialRoute);
   const [tab, setTab] = useState("chat");
   const [mode, setMode] = usePersistentState("fr-mode", "Creator Mode");
   const [crmContacts, setCRMContacts] = usePersistentState("fr-crm-contacts", seedContacts);
@@ -139,8 +165,17 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [status, setStatus] = useState({ loading: true, workspaceMode: "local", services: {} });
 
+  const isAppRoute = route === "/app";
   const runningSet = useMemo(() => new Set(runningAgents), [runningAgents]);
   const effectiveStatus = useMemo(() => mergeStatusWithUserKeys(status, userApiKeys), [status, userApiKeys]);
+  const actionStatus = useMemo(
+    () => ({
+      sendEmail: buildActionStatus("sendEmail", mode, effectiveStatus),
+      bookMeeting: buildActionStatus("bookMeeting", mode, effectiveStatus),
+      publish: buildActionStatus("publish", mode, effectiveStatus),
+    }),
+    [effectiveStatus, mode]
+  );
   const userLabel = hasApiKeys(userApiKeys) ? "Personal browser session" : "Guest browser session";
   const currentTourStep = TOUR_STEPS[tourState.index];
 
@@ -153,6 +188,19 @@ export default function App() {
     const timer = window.setTimeout(() => setToast(null), 3200);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+
+    const syncRoute = () => setRoute(getInitialRoute());
+    window.addEventListener("popstate", syncRoute);
+    return () => window.removeEventListener("popstate", syncRoute);
+  }, []);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    document.title = route === "/app" ? "FounderReach App" : "FounderReach | Founder GTM OS";
+  }, [route]);
 
   const refreshStatus = useCallback(async () => {
     try {
@@ -172,6 +220,28 @@ export default function App() {
   useEffect(() => {
     refreshStatus();
   }, [refreshStatus]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const integration = params.get("integration");
+    const connectionStatus = params.get("status");
+    const shouldOpenSettings = params.get("settings") === "1";
+
+    if (!integration && !shouldOpenSettings) return;
+
+    if (shouldOpenSettings) setSettingsOpen(true);
+    if (connectionStatus === "success" && integration) {
+      notify(`${integration === "gmail" ? "Gmail" : "Google Calendar"} connected successfully.`, "success");
+      track("Connected Account Linked", { toolkit: integration });
+      refreshStatus();
+    } else if (connectionStatus === "failed" && integration) {
+      notify(`${integration === "gmail" ? "Gmail" : "Google Calendar"} connection was not completed.`, "info");
+    }
+
+    const nextUrl = `${window.location.pathname}`;
+    window.history.replaceState({}, "", nextUrl);
+  }, [notify, refreshStatus]);
 
   useEffect(() => {
     if (!tourState.open) return;
@@ -214,13 +284,25 @@ export default function App() {
   }, []);
 
   const startDemoPlayback = useCallback(() => {
+    if (!isAppRoute && typeof window !== "undefined") {
+      window.history.pushState({}, "", "/app");
+      setRoute("/app");
+    }
     setWelcomeDismissed(true);
     setMode("Demo Mode");
     resetWorkspaceToSeed();
     setDemoRunId((current) => current + 1);
     setTourState({ open: true, index: 0, playing: false });
+    track("Demo Started", { route: "/app" });
     notify("Demo walkthrough started. FounderReach is running in fabricated showcase mode.", "info");
-  }, [notify, resetWorkspaceToSeed, setMode, setWelcomeDismissed]);
+  }, [isAppRoute, notify, resetWorkspaceToSeed, setMode, setWelcomeDismissed]);
+
+  const openApp = useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.history.pushState({}, "", "/app");
+      setRoute("/app");
+    }
+  }, []);
 
   const mergeWorkspaceUpdates = useCallback(
     ({ contacts = [], assets = [], events = [] }) => {
@@ -239,10 +321,11 @@ export default function App() {
         // Ignore restricted-storage environments.
       }
       setUserApiKeys(nextKeys);
+      track("Key Saved", { hasKeys: true });
       notify("API keys saved to this browser session.", "success");
       refreshStatus();
     },
-    [notify, refreshStatus]
+    [notify, refreshStatus, setUserApiKeys]
   );
 
   const handleClearApiKeys = useCallback(() => {
@@ -255,7 +338,12 @@ export default function App() {
     setUserApiKeys(next);
     notify("Stored API keys were cleared from this browser session.", "success");
     refreshStatus();
-  }, [notify, refreshStatus]);
+  }, [notify, refreshStatus, setUserApiKeys]);
+
+  const handleResetDemo = useCallback(() => {
+    resetWorkspaceToSeed();
+    notify("FounderReach was reset to the pristine demo workspace.", "success");
+  }, [notify, resetWorkspaceToSeed]);
 
   const handleSendEmail = useCallback(
     async (contact) => {
@@ -382,97 +470,108 @@ export default function App() {
 
   return (
     <>
-      <Shell
-        agentSignals={agentSignals}
-        demoPlaying={tourState.open && tourState.playing && mode === "Demo Mode"}
-        mode={mode}
-        onOpenSettings={() => setSettingsOpen(true)}
-        onSignOut={handleSignOut}
-        onStartDemo={startDemoPlayback}
-        runningAgents={runningSet}
-        setMode={setMode}
-        setTab={setTab}
-        status={effectiveStatus}
-        tab={tab}
-        userLabel={userLabel}
-      >
-        {tab === "chat" && (
-          <ChatTab
-            key={`chat-${chatSessionVersion}`}
+      {isAppRoute ? (
+        <>
+          <Shell
             agentSignals={agentSignals}
-            demoPrompt={DEMO_PROMPT}
-            demoRunId={demoRunId}
+            demoPlaying={tourState.open && tourState.playing && mode === "Demo Mode"}
             mode={mode}
-            notify={notify}
-            onWorkspaceUpdates={mergeWorkspaceUpdates}
+            onOpenSettings={() => setSettingsOpen(true)}
+            onSignOut={handleSignOut}
+            onStartDemo={startDemoPlayback}
             runningAgents={runningSet}
-            setAgentSignals={setAgentSignals}
-            setRunningAgents={setRunningAgents}
+            setMode={setMode}
+            setTab={setTab}
             status={effectiveStatus}
-          />
-        )}
-        {tab === "crm" && (
-          <CRMTab
-            contacts={crmContacts}
-            onBookMeeting={handleBookMeeting}
-            onSendEmail={handleSendEmail}
-            setContacts={setCRMContacts}
-          />
-        )}
-        {tab === "calendar" && <CalendarTab events={calendarEvents} />}
-        {tab === "vault" && (
-          <VaultTab
-            assets={vaultAssets}
-            notify={notify}
-            onPublishAsset={handlePublishAsset}
-          />
-        )}
-      </Shell>
+            tab={tab}
+            userLabel={userLabel}
+          >
+            {tab === "chat" && (
+              <ChatTab
+                key={`chat-${chatSessionVersion}`}
+                agentSignals={agentSignals}
+                demoPrompt={DEMO_PROMPT}
+                demoRunId={demoRunId}
+                mode={mode}
+                onOpenVault={() => setTab("vault")}
+                notify={notify}
+                onWorkspaceUpdates={mergeWorkspaceUpdates}
+                runningAgents={runningSet}
+                setAgentSignals={setAgentSignals}
+                setRunningAgents={setRunningAgents}
+                status={effectiveStatus}
+              />
+            )}
+            {tab === "crm" && (
+              <CRMTab
+                actionStatus={actionStatus}
+                contacts={crmContacts}
+                onBookMeeting={handleBookMeeting}
+                onSendEmail={handleSendEmail}
+                setContacts={setCRMContacts}
+              />
+            )}
+            {tab === "calendar" && <CalendarTab events={calendarEvents} />}
+            {tab === "vault" && (
+              <VaultTab
+                actionStatus={actionStatus}
+                assets={vaultAssets}
+                notify={notify}
+                onPublishAsset={handlePublishAsset}
+              />
+            )}
+          </Shell>
 
-      {settingsOpen && (
-        <SettingsPanel
-          onClearApiKeys={handleClearApiKeys}
-          onClose={() => setSettingsOpen(false)}
-          onRefresh={refreshStatus}
-          onReplayDemo={startDemoPlayback}
-          onSaveApiKeys={handleSaveApiKeys}
-          onSignOut={handleSignOut}
-          status={effectiveStatus}
-          userApiKeys={userApiKeys}
-        />
-      )}
+          {settingsOpen && (
+            <SettingsPanel
+              key={JSON.stringify(userApiKeys)}
+              onClearApiKeys={handleClearApiKeys}
+              onClose={() => setSettingsOpen(false)}
+              onRefresh={refreshStatus}
+              onReplayDemo={startDemoPlayback}
+              onResetDemo={handleResetDemo}
+              onSaveApiKeys={handleSaveApiKeys}
+              onSignOut={handleSignOut}
+              status={effectiveStatus}
+              userApiKeys={userApiKeys}
+            />
+          )}
 
-      {!welcomeDismissed && (
-        <WelcomeOverlay
-          onDismiss={() => setWelcomeDismissed(true)}
-          onStartDemo={startDemoPlayback}
-        />
-      )}
+          {!welcomeDismissed && (
+            <WelcomeOverlay
+              onDismiss={() => setWelcomeDismissed(true)}
+              onStartDemo={startDemoPlayback}
+            />
+          )}
 
-      <GuidedTour
-        open={tourState.open}
-        onBack={() =>
-          setTourState((current) => ({
-            ...current,
-            playing: false,
-            index: Math.max(0, current.index - 1),
-          }))
-        }
-        onClose={closeTour}
-        onNext={() =>
-          setTourState((current) => {
-            if (current.index >= TOUR_STEPS.length - 1) {
-              return { open: false, index: 0, playing: false };
+          <GuidedTour
+            open={tourState.open}
+            onBack={() =>
+              setTourState((current) => ({
+                ...current,
+                playing: false,
+                index: Math.max(0, current.index - 1),
+              }))
             }
-            return { ...current, playing: false, index: current.index + 1 };
-          })
-        }
-        onTogglePlaying={() => setTourState((current) => ({ ...current, playing: !current.playing }))}
-        playing={tourState.playing}
-        step={currentTourStep}
-        stepIndex={tourState.index}
-        total={TOUR_STEPS.length}
-      />
+            onClose={closeTour}
+            onNext={() =>
+              setTourState((current) => {
+                if (current.index >= TOUR_STEPS.length - 1) {
+                  return { open: false, index: 0, playing: false };
+                }
+                return { ...current, playing: false, index: current.index + 1 };
+              })
+            }
+            onTogglePlaying={() => setTourState((current) => ({ ...current, playing: !current.playing }))}
+            playing={tourState.playing}
+            step={currentTourStep}
+            stepIndex={tourState.index}
+            total={TOUR_STEPS.length}
+          />
+        </>
+      ) : (
+        <LaunchPage onOpenApp={openApp} notify={notify} />
+      )}
 
       {toast && <Toast key={toast.id} tone={toast.tone} message={toast.message} />}
     </>

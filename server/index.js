@@ -4,6 +4,7 @@ import express from "express";
 import {
   bookMeetingAction,
   buildPlan,
+  createIntegrationLink,
   executeAgentRun,
   getWorkspaceStatus,
   parseClientRuntimeConfig,
@@ -11,6 +12,7 @@ import {
   publishAction,
   resolveRuntimeEnv,
   sendEmailAction,
+  submitLeadCapture,
 } from "../lib/founderReachBackend.js";
 
 const app = express();
@@ -34,7 +36,14 @@ app.use(
       callback(new Error("CORS origin not allowed"));
     },
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "x-founderreach-keys", "x-founderreach-demo"],
+    allowedHeaders: [
+      "Content-Type",
+      "x-founderreach-keys",
+      "x-founderreach-demo",
+      "x-founderreach-session",
+      "x-founderreach-origin",
+      "x-founderreach-timezone",
+    ],
     maxAge: 600,
   })
 );
@@ -46,22 +55,32 @@ function sendError(res, error, status = 500, fallback = "Internal Server Error")
 }
 
 function runtimeEnvForRequest(req) {
-  const { apiKeys, demoMode } = parseClientRuntimeConfig(
+  const runtime = parseClientRuntimeConfig(
     req.header("x-founderreach-keys"),
-    req.header("x-founderreach-demo")
+    req.header("x-founderreach-demo"),
+    req.header("x-founderreach-session"),
+    req.header("x-founderreach-origin"),
+    req.header("x-founderreach-timezone")
   );
-  return resolveRuntimeEnv(process.env, { apiKeys, demoMode });
+  return {
+    ...runtime,
+    env: resolveRuntimeEnv(process.env, runtime),
+  };
 }
 
-app.get("/api/status", (_req, res) => {
-  res.json(getWorkspaceStatus(runtimeEnvForRequest(_req)));
+app.get("/api/status", async (req, res) => {
+  try {
+    res.json(await getWorkspaceStatus(runtimeEnvForRequest(req)));
+  } catch (error) {
+    sendError(res, error);
+  }
 });
 
 app.post("/api/orchestrate", async (req, res) => {
   try {
     const prompt = req.body?.prompt || "";
     const history = req.body?.history || [];
-    res.json(await buildPlan(prompt, history, runtimeEnvForRequest(req)));
+    res.json(await buildPlan(prompt, history, runtimeEnvForRequest(req).env));
   } catch (error) {
     sendError(res, error);
   }
@@ -80,7 +99,7 @@ app.post("/api/agents/stream", async (req, res) => {
 
   try {
     const { agentId, context } = req.body || {};
-    const result = await executeAgentRun(agentId, context, send, runtimeEnvForRequest(req));
+    const result = await executeAgentRun(agentId, context, send, runtimeEnvForRequest(req).env);
     send("final", result);
     send("done", { ok: true });
   } catch (error) {
@@ -103,7 +122,7 @@ app.post("/api/actions/send-email", async (req, res) => {
 
 app.post("/api/actions/book-meeting", async (req, res) => {
   try {
-    res.json(await bookMeetingAction(req.body?.contact));
+    res.json(await bookMeetingAction(req.body?.contact, runtimeEnvForRequest(req)));
   } catch (error) {
     sendError(res, error);
   }
@@ -111,9 +130,26 @@ app.post("/api/actions/book-meeting", async (req, res) => {
 
 app.post("/api/actions/publish", async (req, res) => {
   try {
-    res.json(await publishAction(req.body?.asset));
+    res.json(await publishAction(req.body?.asset, runtimeEnvForRequest(req)));
   } catch (error) {
     sendError(res, error);
+  }
+});
+
+app.post("/api/lead", async (req, res) => {
+  try {
+    res.json(await submitLeadCapture(req.body, runtimeEnvForRequest(req)));
+  } catch (error) {
+    sendError(res, error, 400, "Unable to capture lead");
+  }
+});
+
+app.post("/api/integrations/connect", async (req, res) => {
+  try {
+    const toolkit = req.body?.toolkit || "";
+    res.json(await createIntegrationLink(toolkit, runtimeEnvForRequest(req)));
+  } catch (error) {
+    sendError(res, error, 400, "Unable to start connection");
   }
 });
 

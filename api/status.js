@@ -8,9 +8,12 @@ export default {
 
     const runtime = parseClientRuntimeConfig(
       request.headers.get("x-founderreach-keys"),
-      request.headers.get("x-founderreach-demo")
+      request.headers.get("x-founderreach-demo"),
+      request.headers.get("x-founderreach-session"),
+      request.headers.get("x-founderreach-origin"),
+      request.headers.get("x-founderreach-timezone")
     );
 
-    return Response.json(getWorkspaceStatus(resolveRuntimeEnv(process.env, runtime)));
+    return Response.json(await getWorkspaceStatus({ ...runtime, env: resolveRuntimeEnv(process.env, runtime) }));
   },
 };

@@ -12,7 +12,10 @@ export default {
       const history = body?.history || [];
       const runtime = parseClientRuntimeConfig(
         request.headers.get("x-founderreach-keys"),
-        request.headers.get("x-founderreach-demo")
+        request.headers.get("x-founderreach-demo"),
+        request.headers.get("x-founderreach-session"),
+        request.headers.get("x-founderreach-origin"),
+        request.headers.get("x-founderreach-timezone")
       );
       return Response.json(await buildPlan(prompt, history, resolveRuntimeEnv(process.env, runtime)));
     } catch (error) {

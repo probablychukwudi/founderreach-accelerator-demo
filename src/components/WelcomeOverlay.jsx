@@ -1,4 +1,5 @@
 import { C } from "../lib/founderReachCore";
+import { FounderReachLogo } from "./FounderReachLogo";
 import { Icon } from "./Icon";
 
 export function WelcomeOverlay({ onDismiss, onStartDemo }) {
@@ -27,31 +28,31 @@ export function WelcomeOverlay({ onDismiss, onStartDemo }) {
       >
         <div
           style={{
-            width: 46,
-            height: 46,
-            borderRadius: 14,
-            background: C.accentL,
-            border: `1px solid ${C.accentM}`,
+            width: 68,
+            height: 72,
+            borderRadius: 18,
+            background: "#FFFFFF",
+            border: `1px solid ${C.border}`,
             display: "grid",
             placeItems: "center",
             marginBottom: 18,
           }}
         >
-          <Icon name="flash" size={18} color={C.accent} />
+          <FounderReachLogo size={38} />
         </div>
 
         <div style={{ fontSize: 28, fontWeight: 800, color: C.text, lineHeight: 1.15, marginBottom: 10 }}>
           Welcome to FounderReach
         </div>
         <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.8, marginBottom: 18 }}>
-          New visitors can step through a guided demo that shows how Creator Mode, the agent rail, CRM, Calendar, Vault, and settings fit together. You can also skip straight into the workspace and explore on your own.
+          New visitors can step through a guided demo that shows how the runs list, chat workspace, run context, CRM, Calendar, Vault, and settings fit together. You can also skip straight into the workspace and explore on your own.
         </div>
 
         <div style={{ display: "grid", gap: 10, marginBottom: 18 }}>
           {[
             "Watch a guided demo with a play-by-play walkthrough",
             "Open settings to add your own API keys in this browser",
-            "Hover or inspect agents to understand how each one works",
+            "Inspect specialists, live states, and artifacts without leaving the workspace",
           ].map((item) => (
             <div key={item} style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div

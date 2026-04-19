@@ -10,6 +10,8 @@ export const API_KEY_FIELDS = [
   { id: "stability", label: "Stability API key", envKey: "STABILITY_API_KEY", serviceKey: "stability" },
 ];
 
+const BROWSER_SESSION_KEY = "fr-browser-session-id";
+
 export function createEmptyApiKeys() {
   return Object.fromEntries(API_KEY_FIELDS.map((field) => [field.id, ""]));
 }
@@ -41,6 +43,33 @@ export function buildRuntimeKeyPayload(apiKeys = {}) {
   return Object.fromEntries(
     API_KEY_FIELDS.map((field) => [field.envKey, String(normalized[field.id] || "").trim()]).filter(([, value]) => value)
   );
+}
+
+export function getBrowserSessionId() {
+  if (typeof window === "undefined") return "server-session";
+
+  try {
+    const existing = window.localStorage.getItem(BROWSER_SESSION_KEY);
+    if (existing) return existing;
+    const next =
+      typeof crypto !== "undefined" && crypto.randomUUID
+        ? `fr-${crypto.randomUUID()}`
+        : `fr-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    window.localStorage.setItem(BROWSER_SESSION_KEY, next);
+    return next;
+  } catch {
+    return "guest-session";
+  }
+}
+
+export function getBrowserTimezone() {
+  if (typeof Intl === "undefined") return "UTC";
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+}
+
+export function getBrowserOrigin() {
+  if (typeof window === "undefined") return "";
+  return window.location.origin;
 }
 
 export function mergeStatusWithUserKeys(status, apiKeys = {}) {

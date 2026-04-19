@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { track } from "@vercel/analytics";
 import { AGENT_BY_ID, AGENTS, C, getModeAgents, SUGGESTIONS } from "../lib/founderReachCore";
 import { deriveWorkspaceUpdates, makeId } from "../lib/workspace";
 import { orchestrate, streamAgentExecution } from "../services/api";
@@ -262,6 +263,7 @@ export function ChatTab({
   demoPrompt,
   demoRunId,
   mode,
+  onOpenVault,
   onWorkspaceUpdates,
   notify,
   runningAgents,
@@ -294,6 +296,7 @@ export function ChatTab({
   const [selectedRunId, setSelectedRunId] = useState(null);
   const [listFilter, setListFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showAllAgents, setShowAllAgents] = useState(false);
   const inputRef = useRef(null);
   const bottomRef = useRef(null);
   const handledDemoRunIdRef = useRef(0);
@@ -304,13 +307,13 @@ export function ChatTab({
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const missingKeys = useMemo(
-    () =>
-      Object.entries(status.services || {})
-        .filter(([, value]) => !value.configured)
-        .map(([key]) => key),
-    [status.services]
-  );
+  const missingCapabilities = useMemo(() => {
+    const missing = [];
+    if (!status.services?.anthropic?.configured) missing.push("Anthropic");
+    if (!status.services?.tinyfish?.configured) missing.push("TinyFish");
+    if (!status.services?.composio?.configured) missing.push("Composio");
+    return missing;
+  }, [status.services]);
 
   const pushMessage = useCallback((next) => {
     setMessages((current) => [...current, next]);
@@ -469,6 +472,12 @@ export function ChatTab({
       try {
         await executePlan(plan, { demoMode: isDemoMode });
         setRuns((current) => current.map((run) => (run.id === runId ? { ...run, status: "complete" } : run)));
+        if (!isDemoMode && (status.services?.tinyfish?.configured || status.integrations?.gmail?.connected || status.integrations?.googleCalendar?.connected)) {
+          track("Successful Live Run", {
+            agents: plan?.agents?.length || 0,
+            mode,
+          });
+        }
       } catch (error) {
         setAgentSignals((current) => {
           const next = { ...current };
@@ -493,7 +502,7 @@ export function ChatTab({
         inputRef.current?.focus();
       }
     },
-    [busy, executePlan, history, isDemoMode, notify, pushMessage, setAgentSignals, setRunningAgents]
+    [busy, executePlan, history, isDemoMode, mode, notify, pushMessage, setAgentSignals, setRunningAgents, status.integrations, status.services]
   );
 
   useEffect(() => {
@@ -505,13 +514,21 @@ export function ChatTab({
     runPromptWithText(demoPrompt);
   }, [demoPrompt, demoRunId, isDemoMode, runPromptWithText]);
 
+  useEffect(() => {
+    setShowAllAgents(false);
+  }, [selectedRunId, mode]);
+
   // --- Derived data for right sidebar (run context) ---
   const activeRun = useMemo(() => runs.find((run) => run.id === selectedRunId), [runs, selectedRunId]);
   const modeAgentIds = useMemo(() => new Set(getModeAgents(mode)), [mode]);
   const contextAgents = useMemo(() => {
     if (activeRun?.agents?.length) return activeRun.agents;
-    return getModeAgents(mode).slice(0, 8);
+    return getModeAgents(mode);
   }, [activeRun, mode]);
+  const visibleAgents = useMemo(
+    () => (showAllAgents ? contextAgents : contextAgents.slice(0, 8)),
+    [contextAgents, showAllAgents]
+  );
 
   const runArtifacts = useMemo(
     () =>
@@ -770,9 +787,9 @@ export function ChatTab({
         <div
           style={{
             padding: "10px 20px",
-            background: isDemoMode ? "#FFF7E6" : missingKeys.length ? "#FEF3CD" : C.accentL,
-            color: isDemoMode ? "#B45309" : missingKeys.length ? C.warn : C.accent,
-            borderBottom: `1px solid ${isDemoMode ? "#FDE4B5" : missingKeys.length ? "#F8DC8C" : C.accentM}`,
+            background: isDemoMode ? "#FFF7E6" : missingCapabilities.length ? "#FEF3CD" : C.accentL,
+            color: isDemoMode ? "#B45309" : missingCapabilities.length ? C.warn : C.accent,
+            borderBottom: `1px solid ${isDemoMode ? "#FDE4B5" : missingCapabilities.length ? "#F8DC8C" : C.accentM}`,
             fontSize: 12,
             display: "flex",
             alignItems: "center",
@@ -780,15 +797,17 @@ export function ChatTab({
           }}
         >
           <Icon
-            name={isDemoMode ? "play" : missingKeys.length ? "slash" : "check"}
+            name={isDemoMode ? "play" : missingCapabilities.length ? "slash" : "check"}
             size={13}
-            color={isDemoMode ? "#B45309" : missingKeys.length ? C.warn : C.accent}
+            color={isDemoMode ? "#B45309" : missingCapabilities.length ? C.warn : C.accent}
           />
           {isDemoMode
             ? "Demo Mode is active. FounderReach is running a fabricated showcase."
-            : missingKeys.length
-              ? `Live integrations missing: ${missingKeys.join(", ")}.`
-              : "All configured services detected. Live mode is ready."}
+            : missingCapabilities.length
+              ? `Core live services still missing: ${missingCapabilities.join(", ")}. FounderReach will stay honest and demo-safe where needed.`
+              : status.integrations?.gmail?.connected || status.integrations?.googleCalendar?.connected
+                ? "TinyFish and connected Google accounts are ready. FounderReach can mix live research with live drafts and meetings."
+                : "TinyFish research is ready. Connect Gmail and Google Calendar in Settings to make drafts and meetings truly live."}
         </div>
 
         {/* messages */}
@@ -925,10 +944,26 @@ export function ChatTab({
           <div style={{ padding: 16, borderBottom: `1px solid ${C.border}` }}>
             <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
               <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Agents</span>
-              <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 500, color: C.accent, cursor: "pointer" }}>View All</span>
+              {contextAgents.length > 8 && (
+                <button
+                  onClick={() => setShowAllAgents((current) => !current)}
+                  style={{
+                    marginLeft: "auto",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    color: C.accent,
+                    cursor: "pointer",
+                    border: "none",
+                    background: "transparent",
+                    padding: 0,
+                  }}
+                >
+                  {showAllAgents ? "Show Less" : `View All (${contextAgents.length})`}
+                </button>
+              )}
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {contextAgents.slice(0, 8).map((agentId) => {
+              {visibleAgents.map((agentId) => {
                 const agent = AGENT_BY_ID[agentId];
                 if (!agent) return null;
                 const signal = getAgentSignal(agentId);
@@ -981,11 +1016,25 @@ export function ChatTab({
             </div>
           </div>
 
-          {/* Artifacts */}
+          {/* Vault */}
           <div style={{ padding: 16, borderBottom: `1px solid ${C.border}` }}>
             <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
-              <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Artifacts</span>
-              <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 500, color: C.accent, cursor: "pointer" }}>View All</span>
+              <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Vault</span>
+              <button
+                onClick={() => onOpenVault?.()}
+                style={{
+                  marginLeft: "auto",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  color: C.accent,
+                  cursor: "pointer",
+                  border: "none",
+                  background: "transparent",
+                  padding: 0,
+                }}
+              >
+                View All
+              </button>
             </div>
             {runArtifacts.length === 0 ? (
               <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>

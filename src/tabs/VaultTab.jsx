@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { C, VAULT_SECTIONS } from "../lib/founderReachCore";
 import { buildAssetText, downloadAsset } from "../lib/workspace";
+import { ExecutionBadge } from "../components/ExecutionBadge";
 import { Icon } from "../components/Icon";
 
 const typeStyles = {
@@ -22,7 +23,7 @@ const typeStyles = {
   System: { background: C.base, color: C.muted },
 };
 
-export function VaultTab({ assets, notify, onPublishAsset }) {
+export function VaultTab({ actionStatus, assets, notify, onPublishAsset }) {
   const [selectedSection, setSelectedSection] = useState("pillars");
   const [selectedAssetId, setSelectedAssetId] = useState(assets[0]?.id || null);
   const [detailsOpen, setDetailsOpen] = useState(true);
@@ -147,10 +148,13 @@ export function VaultTab({ assets, notify, onPublishAsset }) {
                     <Icon name="copy" size={13} color="#fff" />
                     Copy
                   </button>
-                  <button onClick={() => onPublishAsset(selectedAsset)} style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.accentM}`, background: C.accentL, color: C.accent, padding: "11px 14px", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-                    <Icon name="globe" size={13} color={C.accent} />
-                    Publish
-                  </button>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <ExecutionBadge mode={actionStatus?.publish?.mode} label={actionStatus?.publish?.label} />
+                    <button onClick={() => onPublishAsset(selectedAsset)} style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.accentM}`, background: C.accentL, color: C.accent, padding: "11px 14px", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                      <Icon name="globe" size={13} color={C.accent} />
+                      Publish
+                    </button>
+                  </div>
                   <button onClick={() => downloadAsset(selectedAsset)} style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, color: C.text, padding: "11px 14px", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                     <Icon name="download" size={13} color={C.muted} />
                     Download

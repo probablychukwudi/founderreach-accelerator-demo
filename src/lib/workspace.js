@@ -1,5 +1,3 @@
-import { AGENT_BY_ID } from "./founderReachCore";
-
 export const seedContacts = [
   { id: "seed-contact-1", name: "Sequoia Scout", role: "Partner", company: "Sequoia Capital", type: "Investor", stage: "Meeting Booked", agent: "vc", notes: "Strong fit for AI infrastructure and founder-led distribution stories.", track: "VC", email: "partners@sequoiacapital.example", lastContact: "2h ago" },
   { id: "seed-contact-2", name: "Maya Chen", role: "Head of Partnerships", company: "Creator Stack Labs", type: "Prospect", stage: "Researching", agent: "sales", notes: "Potential design partner for creator workflow automation.", track: "Sales", email: "maya@creatorstacklabs.example", lastContact: "Yesterday" },
@@ -59,7 +57,6 @@ export function deriveWorkspaceUpdates(agentId, result) {
   const contacts = [];
   const assets = [];
   const events = [];
-  const agent = AGENT_BY_ID[agentId];
   const stamp = "just now";
   const addContact = (entry) => {
     const stableId = entry.email

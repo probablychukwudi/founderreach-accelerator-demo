@@ -1,8 +1,18 @@
-import { buildRuntimeKeyPayload, getStoredApiKeys } from "../lib/session";
+import {
+  buildRuntimeKeyPayload,
+  getBrowserOrigin,
+  getBrowserSessionId,
+  getBrowserTimezone,
+  getStoredApiKeys,
+} from "../lib/session";
 
 function buildRuntimeHeaders(demoMode = false) {
   const runtimeKeys = buildRuntimeKeyPayload(getStoredApiKeys());
-  const headers = {};
+  const headers = {
+    "x-founderreach-session": getBrowserSessionId(),
+    "x-founderreach-origin": getBrowserOrigin(),
+    "x-founderreach-timezone": getBrowserTimezone(),
+  };
 
   if (Object.keys(runtimeKeys).length) {
     headers["x-founderreach-keys"] = JSON.stringify(runtimeKeys);
@@ -66,6 +76,21 @@ export async function publishAsset(asset, options = {}) {
     method: "POST",
     demoMode: options.demoMode,
     body: JSON.stringify({ asset }),
+  });
+}
+
+export async function submitLead(payload) {
+  return request("/api/lead", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function startIntegrationConnect(toolkit, options = {}) {
+  return request("/api/integrations/connect", {
+    method: "POST",
+    demoMode: options.demoMode,
+    body: JSON.stringify({ toolkit }),
   });
 }
 

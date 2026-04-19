@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { C } from "../lib/founderReachCore";
+import { ExecutionBadge } from "../components/ExecutionBadge";
 import { Icon } from "../components/Icon";
 
 const stageStyle = {
@@ -17,7 +18,7 @@ function StageTag({ stage }) {
   return <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 999, fontWeight: 600, ...style }}>{stage}</span>;
 }
 
-export function CRMTab({ contacts, onSendEmail, onBookMeeting }) {
+export function CRMTab({ actionStatus, contacts, onSendEmail, onBookMeeting }) {
   const [selectedId, setSelectedId] = useState(contacts[0]?.id || null);
   const [filter, setFilter] = useState("All");
   const selected = contacts.find((contact) => contact.id === selectedId) || null;
@@ -103,19 +104,25 @@ export function CRMTab({ contacts, onSendEmail, onBookMeeting }) {
                   <div style={{ fontSize: 13, color: C.muted, marginTop: 4 }}>{selected.role} · {selected.company}</div>
                 </div>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    onClick={() => onSendEmail(selected)}
-                    style={{ borderRadius: 8, border: "none", background: C.text, color: "#fff", padding: "10px 14px", fontSize: 12, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}
-                  >
-                    <Icon name="mail" size={13} color="#fff" />
-                    Email
-                  </button>
-                  <button
-                    onClick={() => onBookMeeting(selected)}
-                    style={{ borderRadius: 8, border: `1px solid ${C.accentM}`, background: C.accentL, color: C.accent, padding: "10px 14px", fontSize: 12, fontWeight: 700 }}
-                  >
-                    Book call
-                  </button>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <ExecutionBadge mode={actionStatus?.sendEmail?.mode} label={actionStatus?.sendEmail?.label} compact />
+                    <button
+                      onClick={() => onSendEmail(selected)}
+                      style={{ borderRadius: 8, border: "none", background: C.text, color: "#fff", padding: "10px 14px", fontSize: 12, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 6 }}
+                    >
+                      <Icon name="mail" size={13} color="#fff" />
+                      Email
+                    </button>
+                  </div>
+                  <div style={{ display: "grid", gap: 6 }}>
+                    <ExecutionBadge mode={actionStatus?.bookMeeting?.mode} label={actionStatus?.bookMeeting?.label} compact />
+                    <button
+                      onClick={() => onBookMeeting(selected)}
+                      style={{ borderRadius: 8, border: `1px solid ${C.accentM}`, background: C.accentL, color: C.accent, padding: "10px 14px", fontSize: 12, fontWeight: 700 }}
+                    >
+                      Book call
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -158,20 +165,26 @@ export function CRMTab({ contacts, onSendEmail, onBookMeeting }) {
                 <div style={{ fontSize: 10, color: C.muted }}>{new Date(selected.nextMeeting.startsAt).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</div>
               </div>
             )}
-            <button
-              onClick={() => onSendEmail(selected)}
-              style={{ width: "100%", borderRadius: 8, border: "none", background: C.text, color: "#fff", padding: "11px 14px", fontSize: 12, fontWeight: 700, marginBottom: 8, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-            >
-              <Icon name="mail" size={13} color="#fff" />
-              Send email
-            </button>
-            <button
-              onClick={() => onBookMeeting(selected)}
-              style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, color: C.text, padding: "11px 14px", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
-            >
-              <Icon name="calendar" size={13} color={C.muted} />
-              Book meeting
-            </button>
+            <div style={{ display: "grid", gap: 6 }}>
+              <ExecutionBadge mode={actionStatus?.sendEmail?.mode} label={actionStatus?.sendEmail?.label} />
+              <button
+                onClick={() => onSendEmail(selected)}
+                style={{ width: "100%", borderRadius: 8, border: "none", background: C.text, color: "#fff", padding: "11px 14px", fontSize: 12, fontWeight: 700, marginBottom: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+              >
+                <Icon name="mail" size={13} color="#fff" />
+                Send email
+              </button>
+            </div>
+            <div style={{ display: "grid", gap: 6 }}>
+              <ExecutionBadge mode={actionStatus?.bookMeeting?.mode} label={actionStatus?.bookMeeting?.label} />
+              <button
+                onClick={() => onBookMeeting(selected)}
+                style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, color: C.text, padding: "11px 14px", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+              >
+                <Icon name="calendar" size={13} color={C.muted} />
+                Book meeting
+              </button>
+            </div>
           </div>
         </>
       ) : (

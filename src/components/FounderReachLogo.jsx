@@ -1,4 +1,4 @@
-const logoUrl = "/founder_reach_logo.svg";
+const logoUrl = "/founder_reach_logo.svg?v=20260419";
 
 export function FounderReachLogo({ size = 30 }) {
   return (

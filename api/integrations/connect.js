@@ -1,4 +1,4 @@
-import { parseClientRuntimeConfig, publicErrorMessage, resolveRuntimeEnv, sendEmailAction } from "../../lib/founderReachBackend.js";
+import { createIntegrationLink, parseClientRuntimeConfig, publicErrorMessage, resolveRuntimeEnv } from "../../lib/founderReachBackend.js";
 
 export default {
   async fetch(request) {
@@ -15,9 +15,9 @@ export default {
         request.headers.get("x-founderreach-origin"),
         request.headers.get("x-founderreach-timezone")
       );
-      return Response.json(await sendEmailAction(body?.contact, { ...runtime, env: resolveRuntimeEnv(process.env, runtime) }));
+      return Response.json(await createIntegrationLink(body?.toolkit || "", { ...runtime, env: resolveRuntimeEnv(process.env, runtime) }));
     } catch (error) {
-      return new Response(publicErrorMessage(error), { status: 500 });
+      return new Response(publicErrorMessage(error, process.env, "Unable to start connection"), { status: 400 });
     }
   },
 };
