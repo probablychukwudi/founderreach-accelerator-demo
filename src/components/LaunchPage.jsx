@@ -174,7 +174,7 @@ export function LaunchPage({ onOpenApp, notify }) {
                 <ExecutionBadge mode="demo" label="Mixed live + demo" />
               </div>
               <h1 style={{ fontSize: "clamp(40px, 6vw, 68px)", lineHeight: 1.02, margin: 0, letterSpacing: "-0.04em" }}>
-                Solo founders turn one prompt into outreach, CRM, calendar, and content momentum.
+                Founders turn one prompt into outreach, CRM, calendar, and content momentum.
               </h1>
               <p style={{ margin: "20px 0 0", maxWidth: 760, fontSize: 18, lineHeight: 1.7, color: C.muted }}>
                 FounderReach is the execution layer for founder-led GTM. TinyFish handles the live research and browser workflows, while FounderReach routes the work across runs, contacts, calendar, and reusable assets in one operating system.
