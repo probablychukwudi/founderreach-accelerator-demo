@@ -134,6 +134,7 @@ function buildActionStatus(actionId, mode, status) {
 
   if (actionId === "sendEmail") {
     if (status.integrations?.gmail?.connected) return { mode: "live", label: "Live" };
+    if (status.services?.agentmail?.configured) return { mode: "live", label: "Live" };
     if (status.services?.composio?.configured) return { mode: "needs-account", label: "Needs account" };
     return { mode: "needs-keys", label: "Needs keys" };
   }

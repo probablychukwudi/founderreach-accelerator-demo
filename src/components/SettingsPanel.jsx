@@ -10,6 +10,8 @@ const serviceLabels = {
   anthropic: "Anthropic",
   tinyfish: "TinyFish",
   composio: "Composio",
+  axiom: "Axiom",
+  mixedbread: "Mixedbread",
   openai: "OpenAI Images",
   gemini: "Gemini",
   heygen: "HeyGen",
@@ -270,16 +272,16 @@ export function SettingsPanel({
               border: `1px solid ${C.border}`,
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
               <div style={{ fontSize: 15, fontWeight: 700, color: C.text }}>Connected accounts</div>
               <ExecutionBadge
-                mode={status.integrations?.providerAvailable ? "demo" : "needs-keys"}
+                mode={status.integrations?.providerAvailable ? "live" : "needs-keys"}
                 label={status.integrations?.providerAvailable ? "Composio ready" : "Backend setup needed"}
                 compact
               />
             </div>
             <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6, marginBottom: 12 }}>
-              Google connections make Gmail draft creation and Google Calendar event creation truly live. Without them, FounderReach still writes safe workspace envelopes.
+              Composio runs on the server side and enables connected Google accounts. Gmail draft creation and Google Calendar event creation become truly live once the account connection is complete. Without them, FounderReach still writes safe workspace envelopes.
             </div>
             <div style={{ display: "grid", gap: 10 }}>
               {[

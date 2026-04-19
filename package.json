@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.71",
+    "@axiomhq/js": "^1.6.0",
     "@composio/core": "^0.6.10",
     "@composio/vercel": "^0.6.10",
     "@vercel/analytics": "^2.0.1",

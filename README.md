@@ -13,7 +13,7 @@ The public deployment is live at [founderreach-accelerator-demo.vercel.app](http
 - Demo-safe CRM, Calendar, and Vault population for first-time visitors
 - Browser-local API key entry for personal testing
 - Local Express routes for development and Vercel serverless routes for production
-- Integration-ready hooks for Anthropic, TinyFish, OpenAI Images, HeyGen, SendGrid, AgentMail, Runway, and Stability
+- Integration-ready hooks for Anthropic, TinyFish, Composio, Axiom, Mixedbread, OpenAI Images, HeyGen, SendGrid, AgentMail, Runway, and Stability
 
 ## Demo Mode vs Live Mode
 
@@ -26,6 +26,7 @@ When live credentials are added:
 - image generation can use OpenAI
 - video generation can use HeyGen
 - email delivery can move toward SendGrid or AgentMail
+- fallback orchestration can use Mixedbread reranking when Anthropic is unavailable
 
 Even with live keys present, some outbound actions remain intentionally demo-safe until the relevant provider-specific workflow is fully wired.
 
@@ -77,13 +78,23 @@ Use `.env.example` as the source of truth for local setup.
 
 - `ANTHROPIC_API_KEY`
 - `TINYFISH_API_KEY`
+- `COMPOSIO_API_KEY`
+- `AXIOM_TOKEN`
+- `AXIOM_DATASET`
+- `MIXEDBREAD_API_KEY`
 - `OPENAI_API_KEY`
 - `GEMINI_API_KEY`
 - `HEYGEN_API_KEY`
 - `SENDGRID_API_KEY`
 - `AGENTMAIL_API_KEY`
+- `AGENTMAIL_INBOX_ID`
 - `RUNWAY_API_KEY`
 - `STABILITY_API_KEY`
+
+`COMPOSIO_API_KEY` is the server-side key that powers connected Google accounts for live Gmail draft creation and Google Calendar event creation.
+`AXIOM_TOKEN` and `AXIOM_DATASET` enable server-side structured telemetry for lead capture, action outcomes, and integration events.
+`AGENTMAIL_API_KEY` plus `AGENTMAIL_INBOX_ID` enable live FounderReach inbox sends and demo-request lead routing.
+`MIXEDBREAD_API_KEY` enables semantic reranking for the local orchestration fallback path when Anthropic is unavailable or errors.
 
 ## Security Model
 
@@ -151,7 +162,7 @@ npm run build
 
 ## Next Improvements
 
-- Complete provider-specific live send and publish actions
+- Complete provider-specific live publish actions
 - Add Supabase auth and cloud persistence
 - Add automated browser smoke tests to CI
 - Replace remaining demo-safe stubs with production integrations where appropriate

@@ -50,11 +50,33 @@ export function LaunchPage({ onOpenApp, notify }) {
   const [form, setForm] = useState(INITIAL_FORM);
   const [submitting, setSubmitting] = useState(false);
   const [responseState, setResponseState] = useState(null);
-  const formRef = useRef(null);
+  const [requestFormOpen, setRequestFormOpen] = useState(false);
+  const modalRef = useRef(null);
 
   useEffect(() => {
     track("Landing Page Viewed", { page: "launch" });
   }, []);
+
+  useEffect(() => {
+    if (!requestFormOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") setRequestFormOpen(false);
+    };
+
+    document.addEventListener("keydown", handleKeyDown);
+    window.setTimeout(() => {
+      modalRef.current?.querySelector("input, textarea")?.focus();
+    }, 60);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [requestFormOpen]);
 
   const proofCards = useMemo(
     () => [
@@ -79,10 +101,7 @@ export function LaunchPage({ onOpenApp, notify }) {
 
   function openForm() {
     track("Book Demo Clicked", { page: "launch" });
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    window.setTimeout(() => {
-      formRef.current?.querySelector("input, textarea")?.focus();
-    }, 220);
+    setRequestFormOpen(true);
   }
 
   async function handleSubmit(event) {
@@ -289,7 +308,7 @@ export function LaunchPage({ onOpenApp, notify }) {
           ))}
         </div>
 
-        <div ref={formRef} style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(360px, 1.1fr)", gap: 24, alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(360px, 1.1fr)", gap: 24, alignItems: "start" }}>
           <div style={{ paddingTop: 8 }}>
             <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: C.accent, marginBottom: 10 }}>
               Book Demo
@@ -392,6 +411,162 @@ export function LaunchPage({ onOpenApp, notify }) {
           </form>
         </div>
       </div>
+
+      {requestFormOpen && (
+        <div
+          onClick={() => setRequestFormOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 70,
+            background: "rgba(24,28,35,0.44)",
+            padding: 24,
+            display: "grid",
+            placeItems: "center",
+          }}
+        >
+          <div
+            ref={modalRef}
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "min(960px, 100%)",
+              maxHeight: "calc(100vh - 48px)",
+              overflowY: "auto",
+              borderRadius: 22,
+              border: `1px solid ${C.border}`,
+              background: C.surface,
+              boxShadow: "0 30px 90px rgba(24,28,35,0.18)",
+              padding: 24,
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16, marginBottom: 20 }}>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".08em", color: C.accent, marginBottom: 8 }}>
+                  Book Demo
+                </div>
+                <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.05, marginBottom: 8 }}>
+                  Request a FounderReach walkthrough
+                </div>
+                <div style={{ fontSize: 14, color: C.muted, lineHeight: 1.7, maxWidth: 560 }}>
+                  This opens the request flow directly, so the page no longer jumps down the landing screen. FounderReach captures your context first, then routes the intake honestly.
+                </div>
+              </div>
+              <button
+                onClick={() => setRequestFormOpen(false)}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  border: `1px solid ${C.border}`,
+                  background: C.surface,
+                  display: "grid",
+                  placeItems: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Icon name="close" size={16} color={C.muted} />
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 0.9fr) minmax(360px, 1.1fr)", gap: 24, alignItems: "start" }}>
+              <div style={{ paddingTop: 8 }}>
+                <div style={{ fontSize: 15, color: C.muted, lineHeight: 1.8, marginBottom: 18 }}>
+                  FounderReach captures your GTM context before the next step, so the follow-up can be tailored instead of generic.
+                </div>
+                <div style={{ display: "grid", gap: 10 }}>
+                  {[
+                    "Founder GTM operating system walkthrough",
+                    "Judge-safe product demo with live vs demo-safe truth states",
+                    "TinyFish-first architecture story for accelerator review",
+                  ].map((item) => (
+                    <div key={item} style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                      <Icon name="check" size={14} color={C.success} />
+                      <div style={{ fontSize: 13, color: C.text }}>{item}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <form onSubmit={handleSubmit} style={{ borderRadius: 18, border: `1px solid ${C.border}`, background: C.surface, padding: 22, display: "grid", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <Field label="Name">
+                    <input style={INPUT_STYLE} value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} required />
+                  </Field>
+                  <Field label="Email">
+                    <input style={INPUT_STYLE} type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} required />
+                  </Field>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <Field label="Company">
+                    <input style={INPUT_STYLE} value={form.company} onChange={(event) => setForm((current) => ({ ...current, company: event.target.value }))} />
+                  </Field>
+                  <Field label="Role">
+                    <input style={INPUT_STYLE} value={form.role} onChange={(event) => setForm((current) => ({ ...current, role: event.target.value }))} />
+                  </Field>
+                </div>
+                <Field label="Use case">
+                  <textarea
+                    style={{ ...INPUT_STYLE, resize: "vertical", minHeight: 96 }}
+                    rows={4}
+                    value={form.useCase}
+                    onChange={(event) => setForm((current) => ({ ...current, useCase: event.target.value }))}
+                    required
+                  />
+                </Field>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <Field label="Preferred time">
+                    <input style={INPUT_STYLE} value={form.preferredTime} onChange={(event) => setForm((current) => ({ ...current, preferredTime: event.target.value }))} placeholder="Today after 3 PM CT" />
+                  </Field>
+                  <Field label="Website">
+                    <input style={INPUT_STYLE} value={form.website} onChange={(event) => setForm((current) => ({ ...current, website: event.target.value }))} placeholder="https://..." />
+                  </Field>
+                </div>
+
+                {responseState?.message && (
+                  <div
+                    style={{
+                      borderRadius: 10,
+                      border: `1px solid ${responseState.ok ? C.accentM : "#F7D2D2"}`,
+                      background: responseState.ok ? C.accentL : "#FDECEC",
+                      padding: "12px 14px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+                      <ExecutionBadge mode={responseState.mode || "demo"} compact />
+                      <span style={{ fontSize: 12, fontWeight: 700, color: C.text }}>
+                        {responseState.ok ? "Request captured" : "Submission issue"}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: 12, lineHeight: 1.6, color: C.muted }}>{responseState.message}</div>
+                  </div>
+                )}
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.55, maxWidth: 360 }}>
+                    FounderReach stores your request as a demo-intake lead and keeps execution mode honest.
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    style={{
+                      height: 44,
+                      borderRadius: 8,
+                      border: "none",
+                      padding: "0 16px",
+                      background: submitting ? C.base : C.text,
+                      color: submitting ? C.hint : "#FFFFFF",
+                      fontSize: 13,
+                      fontWeight: 700,
+                    }}
+                  >
+                    {submitting ? "Submitting..." : "Request Demo"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
