@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AGENT_BY_ID, C, SUGGESTIONS } from "../lib/founderReachCore";
+import { AGENT_BY_ID, AGENTS, C, getModeAgents, SUGGESTIONS } from "../lib/founderReachCore";
 import { deriveWorkspaceUpdates, makeId } from "../lib/workspace";
 import { orchestrate, streamAgentExecution } from "../services/api";
 import { Icon } from "../components/Icon";
@@ -256,6 +256,7 @@ function sleep(ms) {
 }
 
 export function ChatTab({
+  agentSignals = {},
   demoPrompt,
   demoRunId,
   mode,
@@ -287,6 +288,10 @@ export function ChatTab({
   const [busy, setBusy] = useState(false);
   const [input, setInput] = useState("");
   const [history, setHistory] = useState([]);
+  const [runs, setRuns] = useState([]);
+  const [selectedRunId, setSelectedRunId] = useState(null);
+  const [listFilter, setListFilter] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const inputRef = useRef(null);
   const bottomRef = useRef(null);
   const handledDemoRunIdRef = useRef(0);
@@ -424,19 +429,44 @@ export function ChatTab({
       setInput("");
       pushMessage({ id: makeId("user"), type: "founder", text: prompt });
 
+      const runId = makeId("run");
+      setRuns((current) => [
+        {
+          id: runId,
+          title: prompt.slice(0, 80),
+          preview: prompt,
+          timestamp: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+          agents: [],
+          status: "running",
+          unread: false,
+        },
+        ...current,
+      ]);
+      setSelectedRunId(runId);
+
       let plan;
       try {
         plan = await orchestrate(prompt, history, { demoMode: isDemoMode });
       } catch (error) {
         setBusy(false);
         notify(error.message, "error");
+        setRuns((current) => current.map((run) => (run.id === runId ? { ...run, status: "error" } : run)));
         return;
       }
+
+      setRuns((current) =>
+        current.map((run) =>
+          run.id === runId
+            ? { ...run, agents: (plan?.agents || []).map((entry) => entry.agent) }
+            : run
+        )
+      );
 
       setHistory((current) => [...current, { role: "user", content: prompt }]);
 
       try {
         await executePlan(plan, { demoMode: isDemoMode });
+        setRuns((current) => current.map((run) => (run.id === runId ? { ...run, status: "complete" } : run)));
       } catch (error) {
         setAgentSignals((current) => {
           const next = { ...current };
@@ -445,6 +475,7 @@ export function ChatTab({
           });
           return next;
         });
+        setRuns((current) => current.map((run) => (run.id === runId ? { ...run, status: "issue" } : run)));
         notify(error.message, "error");
         pushMessage({
           id: makeId("guardrail-error"),
@@ -472,133 +503,540 @@ export function ChatTab({
     runPromptWithText(demoPrompt);
   }, [demoPrompt, demoRunId, isDemoMode, runPromptWithText]);
 
+  // --- Derived data for right sidebar (run context) ---
+  const activeRun = useMemo(() => runs.find((run) => run.id === selectedRunId), [runs, selectedRunId]);
+  const modeAgentIds = useMemo(() => new Set(getModeAgents(mode)), [mode]);
+  const contextAgents = useMemo(() => {
+    if (activeRun?.agents?.length) return activeRun.agents;
+    return getModeAgents(mode).slice(0, 8);
+  }, [activeRun, mode]);
+
+  const runArtifacts = useMemo(
+    () =>
+      messages
+        .filter((message) => message.type === "agent" && message.result)
+        .slice(-6)
+        .map((message) => ({
+          id: message.id,
+          agent: AGENT_BY_ID[message.agentId]?.name || message.agentId,
+          title: message.progress || "Complete",
+          api: message.api,
+          imageUrl: message.imageUrl,
+        }))
+        .reverse(),
+    [messages]
+  );
+
+  const getAgentSignal = (agentId) => {
+    if (runningAgents.has?.(agentId)) return "running";
+    if (agentSignals[agentId] === "issue") return "issue";
+    if (agentSignals[agentId] === "pending") return "pending";
+    if (modeAgentIds.has(agentId)) return "mode";
+    return "idle";
+  };
+
+  const filteredRuns = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return runs.filter((run) => {
+      if (listFilter === "Unread" && !run.unread) return false;
+      if (listFilter === "Running" && run.status !== "running") return false;
+      if (query && !run.title.toLowerCase().includes(query)) return false;
+      return true;
+    });
+  }, [runs, listFilter, searchQuery]);
+
+  const runCounts = useMemo(
+    () => ({
+      All: runs.length,
+      Unread: runs.filter((run) => run.unread).length,
+      Running: runs.filter((run) => run.status === "running").length,
+    }),
+    [runs]
+  );
+
+  const signalColor = (signal) => {
+    if (signal === "running") return C.danger;
+    if (signal === "issue") return C.warn;
+    if (signal === "pending") return C.warn;
+    if (signal === "mode") return C.success;
+    return C.hint;
+  };
+
   return (
-    <div data-tour="chat-root" style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", minWidth: 0 }}>
-      <div
+    <div data-tour="chat-root" style={{ display: "flex", flex: 1, overflow: "hidden", minWidth: 0 }}>
+      {/* conversation_list (340) */}
+      <section
+        data-tour="run-list"
         style={{
-          padding: "10px 18px",
-          background: isDemoMode ? "#FFF7E6" : missingKeys.length ? "#FEF3CD" : C.accentL,
-          color: isDemoMode ? "#B45309" : missingKeys.length ? C.warn : C.accent,
-          borderBottom: `1px solid ${isDemoMode ? "#FDE4B5" : missingKeys.length ? "#F8DC8C" : C.accentM}`,
-          fontSize: 12,
+          width: 340,
+          flexShrink: 0,
+          background: C.surface,
+          borderRight: `1px solid ${C.border}`,
           display: "flex",
-          alignItems: "center",
-          gap: 8,
+          flexDirection: "column",
         }}
       >
-        <Icon
-          name={isDemoMode ? "play" : missingKeys.length ? "slash" : "check"}
-          size={13}
-          color={isDemoMode ? "#B45309" : missingKeys.length ? C.warn : C.accent}
-        />
-        {isDemoMode
-          ? "Demo Mode is active. FounderReach will fabricate a slower showcase run so new visitors can understand the full workflow."
-          : missingKeys.length
-            ? `Live integrations still missing: ${missingKeys.join(", ")}. The app is using safe local simulation where needed.`
-            : "All configured services detected. Live mode is ready."}
-      </div>
+        <div style={{ height: 56, padding: "0 16px", display: "flex", alignItems: "center", borderBottom: `1px solid ${C.border}` }}>
+          <span style={{ fontSize: 16, fontWeight: 600, color: C.text, letterSpacing: "-0.01em" }}>Runs</span>
+          <span style={{ marginLeft: "auto", fontSize: 12, color: C.muted }}>{runs.length}</span>
+        </div>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "20px 22px 10px", background: C.surface }}>
-        {messages.map((message) => {
-          if (message.type === "system") return <SystemMessage key={message.id} text={message.text} />;
-          if (message.type === "founder") return <FounderMessage key={message.id} text={message.text} />;
-          return <AgentMessage key={message.id} message={message} />;
-        })}
-        <div ref={bottomRef} />
-      </div>
-
-      <div style={{ padding: "14px 22px 18px", borderTop: `1px solid ${C.border}`, background: C.surface }}>
-        <div style={{ display: "flex", gap: 10, alignItems: "flex-end", marginBottom: 10 }}>
+        <div style={{ padding: 16, borderBottom: `1px solid ${C.border}` }}>
           <div
-            data-tour="chat-compose"
             style={{
-              flex: 1,
+              height: 40,
+              borderRadius: 8,
               border: `1px solid ${C.border}`,
               background: C.surface,
-              borderRadius: 8,
-              padding: "10px 12px",
               display: "flex",
+              alignItems: "center",
               gap: 8,
-              alignItems: "flex-start",
-              height: 52,
+              padding: "0 12px",
+              marginBottom: 12,
             }}
           >
-            <Icon name="flash" size={14} color={C.hint} />
-            <textarea
-              ref={inputRef}
-              rows={1}
-              value={input}
-              onChange={(event) => setInput(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && !event.shiftKey) {
-                  event.preventDefault();
-                  runPromptWithText(input);
-                }
-              }}
-              placeholder={isDemoMode ? "Ask for a fabricated showcase run or press Play demo." : "Describe what you're building, raising, publishing, or automating."}
+            <Icon name="search" size={14} color={C.hint} />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search runs"
               style={{
                 flex: 1,
                 border: "none",
                 outline: "none",
                 background: "transparent",
-                resize: "none",
+                fontSize: 13,
                 color: C.text,
-                fontSize: 14,
-                lineHeight: 1.5,
-                maxHeight: 120,
-              }}
-              onInput={(event) => {
-                event.target.style.height = "auto";
-                event.target.style.height = `${Math.min(event.target.scrollHeight, 120)}px`;
               }}
             />
           </div>
-          <button
-            data-tour="chat-run"
-            onClick={() => runPromptWithText(input)}
-            disabled={!input.trim() || busy}
-            style={{
-              minWidth: 96,
-              height: 40,
-              borderRadius: 8,
-              border: "none",
-              background: input.trim() && !busy ? C.accent : C.base,
-              color: input.trim() && !busy ? "#FFFFFF" : C.hint,
-              fontSize: 13,
-              fontWeight: 600,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 7,
-            }}
-          >
-            <Icon name="send" size={13} color={input.trim() && !busy ? "#FFFFFF" : C.hint} />
-            {busy ? (runningAgents.size > 0 ? `${runningAgents.size} running` : "Running") : "Run"}
-          </button>
+          <div style={{ display: "flex", gap: 6 }}>
+            {["All", "Unread", "Running"].map((option) => {
+              const active = option === listFilter;
+              const count = runCounts[option];
+              return (
+                <button
+                  key={option}
+                  onClick={() => setListFilter(option)}
+                  style={{
+                    height: 32,
+                    padding: "0 12px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: active ? C.surface : "transparent",
+                    boxShadow: active ? `inset 0 0 0 1px ${C.border}` : "none",
+                    color: active ? C.text : C.muted,
+                    fontSize: 12,
+                    fontWeight: active ? 600 : 500,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  {option}
+                  {count > 0 && (
+                    <span
+                      style={{
+                        minWidth: 18,
+                        height: 18,
+                        padding: "0 6px",
+                        borderRadius: 999,
+                        background: active ? C.accent : C.base,
+                        color: active ? "#FFFFFF" : C.muted,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {SUGGESTIONS.map((suggestion) => (
-            <button
-              key={suggestion}
-              onClick={() => {
-                setInput(suggestion);
-                inputRef.current?.focus();
-              }}
+
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          {filteredRuns.length === 0 ? (
+            <div style={{ padding: 24, textAlign: "left" }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.text, marginBottom: 6 }}>No runs yet</div>
+              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
+                Ask FounderReach what to build, raise, publish, or automate. Each run appears here.
+              </div>
+            </div>
+          ) : (
+            filteredRuns.map((run) => {
+              const active = run.id === selectedRunId;
+              return (
+                <button
+                  key={run.id}
+                  onClick={() => setSelectedRunId(run.id)}
+                  style={{
+                    width: "100%",
+                    height: 64,
+                    padding: "10px 16px",
+                    border: "none",
+                    borderBottom: `1px solid ${C.border}`,
+                    background: active ? C.accentL : "transparent",
+                    textAlign: "left",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                    cursor: "pointer",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: C.text, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {run.title}
+                    </span>
+                    <span style={{ fontSize: 11, color: C.muted, flexShrink: 0 }}>{run.timestamp}</span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 12, color: C.muted, flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {run.agents.length > 0 ? `${run.agents.length} agents routed` : "Planning..."}
+                    </span>
+                    {run.status === "running" && (
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.accent, animation: "founderreach-pulse 1.1s infinite" }} />
+                    )}
+                    {run.status === "issue" && (
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.warn }} />
+                    )}
+                    {run.status === "error" && (
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.danger }} />
+                    )}
+                  </div>
+                </button>
+              );
+            })
+          )}
+        </div>
+      </section>
+
+      {/* chat_main (560) */}
+      <section
+        style={{
+          width: 560,
+          flexShrink: 0,
+          background: C.surface,
+          borderRight: `1px solid ${C.border}`,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* toolbar */}
+        <div
+          style={{
+            height: 56,
+            padding: "0 20px",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            borderBottom: `1px solid ${C.border}`,
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 16, fontWeight: 600, color: C.text, letterSpacing: "-0.01em" }}>
+              {activeRun?.title || "FounderReach"}
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, marginTop: 1 }}>
+              {activeRun ? `${activeRun.agents.length} agents · ${activeRun.status}` : "Ready for your first run"}
+            </div>
+          </div>
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6 }}>
+            <button style={{ width: 32, height: 32, borderRadius: 8, border: "none", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon name="search" size={16} color={C.muted} />
+            </button>
+            <button style={{ width: 32, height: 32, borderRadius: 8, border: "none", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon name="dots" size={16} color={C.muted} />
+            </button>
+          </div>
+        </div>
+
+        {/* state banner */}
+        <div
+          style={{
+            padding: "10px 20px",
+            background: isDemoMode ? "#FFF7E6" : missingKeys.length ? "#FEF3CD" : C.accentL,
+            color: isDemoMode ? "#B45309" : missingKeys.length ? C.warn : C.accent,
+            borderBottom: `1px solid ${isDemoMode ? "#FDE4B5" : missingKeys.length ? "#F8DC8C" : C.accentM}`,
+            fontSize: 12,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <Icon
+            name={isDemoMode ? "play" : missingKeys.length ? "slash" : "check"}
+            size={13}
+            color={isDemoMode ? "#B45309" : missingKeys.length ? C.warn : C.accent}
+          />
+          {isDemoMode
+            ? "Demo Mode is active. FounderReach is running a fabricated showcase."
+            : missingKeys.length
+              ? `Live integrations missing: ${missingKeys.join(", ")}.`
+              : "All configured services detected. Live mode is ready."}
+        </div>
+
+        {/* messages */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "20px", background: C.surface }}>
+          {messages.map((message) => {
+            if (message.type === "system") return <SystemMessage key={message.id} text={message.text} />;
+            if (message.type === "founder") return <FounderMessage key={message.id} text={message.text} />;
+            return <AgentMessage key={message.id} message={message} />;
+          })}
+          <div ref={bottomRef} />
+        </div>
+
+        {/* compose */}
+        <div style={{ padding: "14px 20px 18px", borderTop: `1px solid ${C.border}`, background: C.surface }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-end", marginBottom: 10 }}>
+            <div
+              data-tour="chat-compose"
               style={{
-                borderRadius: 999,
+                flex: 1,
                 border: `1px solid ${C.border}`,
                 background: C.surface,
-                color: C.muted,
-                padding: "6px 12px",
-                fontSize: 12,
-                lineHeight: 1.4,
+                borderRadius: 8,
+                padding: "0 12px",
+                display: "flex",
+                gap: 8,
+                alignItems: "center",
+                height: 52,
               }}
             >
-              {suggestion}
+              <Icon name="flash" size={14} color={C.hint} />
+              <textarea
+                ref={inputRef}
+                rows={1}
+                value={input}
+                onChange={(event) => setInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && !event.shiftKey) {
+                    event.preventDefault();
+                    runPromptWithText(input);
+                  }
+                }}
+                placeholder={isDemoMode ? "Ask for a showcase run or press Play demo." : "Type a message..."}
+                style={{
+                  flex: 1,
+                  border: "none",
+                  outline: "none",
+                  background: "transparent",
+                  resize: "none",
+                  color: C.text,
+                  fontSize: 14,
+                  lineHeight: 1.5,
+                  padding: "14px 0",
+                  maxHeight: 120,
+                }}
+                onInput={(event) => {
+                  event.target.style.height = "auto";
+                  event.target.style.height = `${Math.min(event.target.scrollHeight, 120)}px`;
+                }}
+              />
+            </div>
+            <button
+              data-tour="chat-run"
+              onClick={() => runPromptWithText(input)}
+              disabled={!input.trim() || busy}
+              style={{
+                width: 52,
+                height: 52,
+                borderRadius: 8,
+                border: "none",
+                background: input.trim() && !busy ? C.accent : C.base,
+                color: input.trim() && !busy ? "#FFFFFF" : C.hint,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              title={busy ? "Running..." : "Send"}
+            >
+              <Icon name="send" size={15} color={input.trim() && !busy ? "#FFFFFF" : C.hint} />
             </button>
-          ))}
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {SUGGESTIONS.slice(0, 3).map((suggestion) => (
+              <button
+                key={suggestion}
+                onClick={() => {
+                  setInput(suggestion);
+                  inputRef.current?.focus();
+                }}
+                style={{
+                  borderRadius: 999,
+                  border: `1px solid ${C.border}`,
+                  background: C.surface,
+                  color: C.muted,
+                  padding: "6px 12px",
+                  fontSize: 12,
+                  lineHeight: 1.4,
+                }}
+              >
+                {suggestion}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
+
+      {/* sidebar_right (280) — group context / run context */}
+      <aside
+        data-tour="run-context"
+        style={{
+          width: 280,
+          flexShrink: 0,
+          background: C.surface,
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        <div style={{ height: 56, padding: "0 16px", display: "flex", alignItems: "center", borderBottom: `1px solid ${C.border}` }}>
+          <span style={{ fontSize: 16, fontWeight: 600, color: C.text, letterSpacing: "-0.01em" }}>Run context</span>
+        </div>
+
+        <div style={{ flex: 1, overflowY: "auto" }}>
+          {/* About */}
+          <div style={{ padding: 16, borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: ".04em", marginBottom: 8 }}>
+              About
+            </div>
+            <div style={{ fontSize: 14, color: C.text, lineHeight: 1.5 }}>
+              {activeRun?.preview ||
+                "Agent orchestration workspace. Runs route a single prompt across specialist agents and stitch results back into CRM, Calendar, and Vault."}
+            </div>
+          </div>
+
+          {/* Agents in run */}
+          <div style={{ padding: 16, borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Agents</span>
+              <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 500, color: C.accent, cursor: "pointer" }}>View All</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              {contextAgents.slice(0, 8).map((agentId) => {
+                const agent = AGENT_BY_ID[agentId];
+                if (!agent) return null;
+                const signal = getAgentSignal(agentId);
+                return (
+                  <div
+                    key={agentId}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "6px 8px",
+                      borderRadius: 8,
+                      background: signal === "running" ? C.accentL : "transparent",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 8,
+                        background: C.base,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Icon name={agent.icon} size={13} color={C.muted} strokeWidth={1.8} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 500, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {agent.name}
+                      </div>
+                      <div style={{ fontSize: 11, color: C.muted, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        {agent.api.toUpperCase()}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: signalColor(signal),
+                        flexShrink: 0,
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Artifacts */}
+          <div style={{ padding: 16, borderBottom: `1px solid ${C.border}` }}>
+            <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Artifacts</span>
+              <span style={{ marginLeft: "auto", fontSize: 12, fontWeight: 500, color: C.accent, cursor: "pointer" }}>View All</span>
+            </div>
+            {runArtifacts.length === 0 ? (
+              <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.5 }}>
+                Outputs from this run will appear here and sync to Vault.
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 56px)", gap: 8 }}>
+                {runArtifacts.slice(0, 6).map((artifact) => (
+                  <div
+                    key={artifact.id}
+                    title={`${artifact.agent} · ${artifact.title}`}
+                    style={{
+                      width: 56,
+                      height: 56,
+                      borderRadius: 8,
+                      background: artifact.imageUrl ? "#FFFFFF" : C.base,
+                      border: `1px solid ${C.border}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {artifact.imageUrl ? (
+                      <img src={artifact.imageUrl} alt={artifact.agent} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    ) : (
+                      <Icon name="copy" size={14} color={C.muted} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Signals */}
+          <div style={{ padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
+              <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>Signals</span>
+            </div>
+            <div style={{ fontSize: 12, color: C.muted, lineHeight: 1.6 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.danger }} />
+                Running
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.success }} />
+                Mode active
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.warn }} />
+                Needs attention
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: C.hint }} />
+                Idle
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
     </div>
   );
 }

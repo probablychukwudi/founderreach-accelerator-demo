@@ -1,55 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FounderReachLogo } from "./FounderReachLogo";
 import { Icon } from "./Icon";
-import { AGENTS, AGENT_BY_ID, C, getAgentGuide, getModeAgents, GROUPS_ORDER, OPERATING_MODES } from "../lib/founderReachCore";
+import { C, OPERATING_MODES } from "../lib/founderReachCore";
 
-const SIGNAL_STYLES = {
-  idle: {
-    background: "#D1D5DB",
-    boxShadow: "none",
-    borderLeft: "2px solid transparent",
-  },
-  mode: {
-    background: "#22C55E",
-    boxShadow: "none",
-    borderLeft: "2px solid #22C55E",
-  },
-  running: {
-    background: "#EF4444",
-    boxShadow: "0 0 0 3px rgba(239,68,68,0.18)",
-    borderLeft: "2px solid #EF4444",
-  },
-  pending: {
-    background: "#F59E0B",
-    boxShadow: "none",
-    borderLeft: "2px solid #F59E0B",
-  },
-  issue: {
-    background: "#F59E0B",
-    boxShadow: "none",
-    borderLeft: "2px solid #F59E0B",
-  },
-};
-
-const SIGNAL_LABELS = {
-  idle: "Idle",
-  mode: "Mode active",
-  running: "Running now",
-  pending: "Pending",
-  issue: "Needs attention",
-};
-
-const getSignalDotStyle = (signal) => ({
-  width: 7,
-  height: 7,
-  borderRadius: "50%",
-  background: SIGNAL_STYLES[signal].background,
-  boxShadow: SIGNAL_STYLES[signal].boxShadow,
-  flexShrink: 0,
-});
+const NAV_ITEMS = [
+  { id: "chat", label: "Inbox", icon: "chat" },
+  { id: "crm", label: "Contacts", icon: "users" },
+  { id: "calendar", label: "Calendar", icon: "calendar" },
+  { id: "vault", label: "Vault", icon: "folder" },
+];
 
 export function Shell({
-  agentSignals = {},
   demoPlaying,
   mode,
   onOpenSettings,
@@ -63,68 +24,42 @@ export function Shell({
   userLabel,
   children,
 }) {
-  const [inspectedAgentId, setInspectedAgentId] = useState("orchestrator");
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const menuRef = useRef(null);
-
-  const tabs = [
-    { id: "chat", label: "Chat" },
-    { id: "crm", label: "CRM" },
-    { id: "calendar", label: "Calendar" },
-    { id: "vault", label: "Vault" },
-  ];
-
-  const modeAgents = useMemo(() => new Set(getModeAgents(mode)), [mode]);
-  const inspectedAgent = AGENT_BY_ID[inspectedAgentId] || AGENT_BY_ID[getModeAgents(mode)[0]] || AGENT_BY_ID.orchestrator;
-  const inspectedGuide = getAgentGuide(inspectedAgent.id);
   const isDemoMode = mode === "Demo Mode";
+  const avatarLabel = userLabel.startsWith("Personal") ? "PB" : "GS";
 
   useEffect(() => {
     if (!userMenuOpen) return undefined;
-
     const closeIfOutside = (event) => {
       if (menuRef.current?.contains(event.target)) return;
       setUserMenuOpen(false);
     };
-
     document.addEventListener("mousedown", closeIfOutside);
     return () => document.removeEventListener("mousedown", closeIfOutside);
   }, [userMenuOpen]);
 
-  const getSignalState = (agentId) => {
-    if (runningAgents.has(agentId)) return "running";
-    if (agentSignals[agentId] === "issue") return "issue";
-    if (agentSignals[agentId] === "pending") return "pending";
-    if (modeAgents.has(agentId)) return "mode";
-    return "idle";
-  };
-
-  const inspectedSignal = getSignalState(inspectedAgent.id);
-  const avatarLabel = userLabel.startsWith("Personal") ? "PB" : "GS";
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: C.base, overflow: "hidden" }}>
-      <div
+    <div style={{ display: "flex", height: "100vh", background: C.base, overflow: "hidden" }}>
+      {/* sidebar_left (220) — global navigation */}
+      <aside
+        data-tour="sidebar-left"
         style={{
-          height: 52,
-          width: "100%",
-          background: "#ffffff",
-          borderBottom: `1px solid ${C.border}`,
-          display: "grid",
-          gridTemplateColumns: "1fr auto 1fr",
-          alignItems: "center",
-          gap: 18,
-          padding: "0 18px",
+          width: 220,
           flexShrink: 0,
+          background: C.surface,
+          borderRight: `1px solid ${C.border}`,
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        <div style={{ justifySelf: "start", display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-          <FounderReachLogo size={26} />
-          <span style={{ fontSize: 15, fontWeight: 700, color: C.text, letterSpacing: "-0.01em" }}>FounderReach</span>
+        <div style={{ height: 56, padding: "0 16px", display: "flex", alignItems: "center", gap: 10, borderBottom: `1px solid ${C.border}` }}>
+          <FounderReachLogo size={22} />
+          <span style={{ fontSize: 16, fontWeight: 600, color: C.text, letterSpacing: "-0.01em" }}>FounderReach</span>
         </div>
 
-        <div style={{ justifySelf: "center", display: "flex", alignItems: "stretch", height: "100%" }}>
-          {tabs.map((item) => {
+        <nav style={{ padding: 8, flex: 1, overflowY: "auto" }}>
+          {NAV_ITEMS.map((item) => {
             const active = tab === item.id;
             return (
               <button
@@ -132,71 +67,62 @@ export function Shell({
                 data-tour={`nav-${item.id}`}
                 onClick={() => setTab(item.id)}
                 style={{
-                  height: "100%",
-                  padding: "0 16px",
+                  width: "100%",
+                  height: 36,
+                  padding: "0 12px",
+                  margin: "2px 0",
                   border: "none",
-                  borderBottom: active ? `2px solid ${C.accent}` : "2px solid transparent",
-                  background: "transparent",
+                  borderRadius: 8,
+                  background: active ? C.accentL : "transparent",
                   color: active ? C.text : C.muted,
                   fontSize: 13,
-                  fontWeight: active ? 600 : 400,
+                  fontWeight: active ? 600 : 500,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  textAlign: "left",
                 }}
               >
+                <Icon name={item.icon} size={16} color={active ? C.accent : C.muted} strokeWidth={1.8} />
                 {item.label}
               </button>
             );
           })}
-        </div>
+        </nav>
 
-        <div style={{ justifySelf: "end", display: "flex", alignItems: "center", gap: 10 }}>
-          {runningAgents.size > 0 && (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 6,
-                background: C.accentL,
-                borderRadius: 999,
-                padding: "5px 10px",
-              }}
-            >
-              <div
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: "50%",
-                  background: C.accent,
-                  animation: "founderreach-pulse 1.1s infinite",
-                }}
-              />
-              <span style={{ fontSize: 11, fontWeight: 700, color: C.accent }}>
-                {runningAgents.size} agent{runningAgents.size > 1 ? "s" : ""} running
-              </span>
-            </div>
-          )}
-
+        <div style={{ borderTop: `1px solid ${C.border}`, padding: 12 }}>
           <div
+            data-tour="mode-select"
             style={{
               display: "flex",
               alignItems: "center",
               gap: 8,
-              padding: "6px 10px",
-              borderRadius: 999,
-              background: status.workspaceMode === "local" ? C.base : C.accentL,
-              border: `1px solid ${status.workspaceMode === "local" ? C.border : C.accentM}`,
+              border: `1px solid ${C.border}`,
+              borderRadius: 8,
+              padding: "0 10px",
+              height: 36,
+              background: C.surface,
+              marginBottom: 8,
             }}
           >
-            <div
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: isDemoMode ? C.warn : C.success }} />
+            <select
+              value={mode}
+              onChange={(event) => setMode(event.target.value)}
               style={{
-                width: 7,
-                height: 7,
-                borderRadius: "50%",
-                background: status.workspaceMode === "local" ? C.muted : C.accent,
+                border: "none",
+                background: "transparent",
+                fontSize: 13,
+                fontWeight: 500,
+                color: C.text,
+                outline: "none",
+                flex: 1,
               }}
-            />
-            <span style={{ fontSize: 11, fontWeight: 700, color: status.workspaceMode === "local" ? C.muted : C.accent }}>
-              {status.workspaceMode === "local" ? "Demo-safe" : "Live-ready"}
-            </span>
+            >
+              {OPERATING_MODES.map((item) => (
+                <option key={item} value={item}>{item}</option>
+              ))}
+            </select>
           </div>
 
           {isDemoMode && (
@@ -204,16 +130,19 @@ export function Shell({
               data-tour="demo-play"
               onClick={onStartDemo}
               style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 7,
-                borderRadius: 999,
+                width: "100%",
+                height: 36,
+                borderRadius: 8,
                 border: demoPlaying ? `1px solid ${C.accentM}` : `1px solid ${C.border}`,
                 background: demoPlaying ? C.accentL : C.surface,
                 color: demoPlaying ? C.accent : C.text,
-                padding: "7px 11px",
-                fontSize: 11,
-                fontWeight: 800,
+                fontSize: 12,
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 6,
+                marginBottom: 8,
               }}
             >
               <Icon name={demoPlaying ? "pause" : "play"} size={12} color={demoPlaying ? C.accent : C.muted} />
@@ -222,282 +151,115 @@ export function Shell({
           )}
 
           <div
-            data-tour="mode-select"
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 7,
-              border: `1px solid ${C.border}`,
-              borderRadius: 999,
-              padding: "6px 10px",
+              gap: 8,
+              padding: "0 10px",
+              height: 32,
+              borderRadius: 8,
               background: C.base,
+              marginBottom: 8,
             }}
           >
-            <div style={{ width: 7, height: 7, borderRadius: "50%", background: isDemoMode ? "#f59e0b" : C.accent }} />
-            <select
-              value={mode}
-              onChange={(event) => setMode(event.target.value)}
-              style={{
-                border: "none",
-                background: "transparent",
-                fontSize: 11,
-                fontWeight: 700,
-                color: C.text,
-                outline: "none",
-              }}
-            >
-              {OPERATING_MODES.map((item) => (
-                <option key={item} value={item}>
-                  {item}
-                </option>
-              ))}
-            </select>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: status.workspaceMode === "local" ? C.muted : C.success }} />
+            <span style={{ fontSize: 11, fontWeight: 500, color: C.muted }}>
+              {status.workspaceMode === "local" ? "Demo-safe" : "Live-ready"}
+            </span>
+            {runningAgents.size > 0 && (
+              <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 600, color: C.accent }}>
+                {runningAgents.size} running
+              </span>
+            )}
           </div>
-
-          <button style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex" }}>
-            <Icon name="search" size={16} color={C.muted} />
-          </button>
-          <button style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex" }}>
-            <Icon name="bell" size={16} color={C.muted} />
-          </button>
-          <button
-            data-tour="settings-button"
-            onClick={onOpenSettings}
-            style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex" }}
-          >
-            <Icon name="settings" size={16} color={C.muted} />
-          </button>
 
           <div ref={menuRef} style={{ position: "relative" }}>
             <button
               data-tour="user-menu"
               onClick={() => setUserMenuOpen((current) => !current)}
               style={{
-                width: 30,
-                height: 30,
-                borderRadius: "50%",
-                background: C.base,
-                border: `1px solid ${C.border}`,
+                width: "100%",
+                height: 40,
+                padding: "0 8px",
                 display: "flex",
                 alignItems: "center",
-                justifyContent: "center",
+                gap: 10,
+                background: C.surface,
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
                 color: C.text,
-                fontSize: 10,
-                fontWeight: 800,
               }}
             >
-              {avatarLabel}
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  background: C.accentL,
+                  color: C.accent,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 11,
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}
+              >
+                {avatarLabel}
+              </div>
+              <span style={{ flex: 1, fontSize: 12, fontWeight: 500, color: C.text, textAlign: "left", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {userLabel.startsWith("Personal") ? "Personal" : "Guest"}
+              </span>
+              <Icon name="settings" size={14} color={C.muted} />
             </button>
 
             {userMenuOpen && (
               <div
                 style={{
                   position: "absolute",
-                  top: 38,
+                  bottom: 44,
+                  left: 0,
                   right: 0,
-                  width: 230,
                   borderRadius: 10,
                   border: `1px solid ${C.border}`,
                   background: C.surface,
-                  padding: 10,
+                  padding: 8,
                   zIndex: 20,
                 }}
               >
-                <div style={{ padding: "8px 10px 10px", borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
-                  <div style={{ fontSize: 12, fontWeight: 800, color: C.text }}>{userLabel}</div>
-                  <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>
-                    Sign out clears local data and browser-saved keys for this session.
-                  </div>
+                <div style={{ padding: "8px 10px", fontSize: 11, color: C.muted, borderBottom: `1px solid ${C.border}`, marginBottom: 6 }}>
+                  {userLabel}
                 </div>
                 <button
-                  onClick={() => {
-                    setUserMenuOpen(false);
-                    onStartDemo();
-                  }}
-                  style={{
-                    width: "100%",
-                    border: "none",
-                    borderRadius: 12,
-                    background: C.base,
-                    color: C.text,
-                    padding: "9px 10px",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    marginBottom: 6,
-                  }}
+                  onClick={() => { setUserMenuOpen(false); onOpenSettings(); }}
+                  style={{ width: "100%", border: "none", borderRadius: 8, background: "transparent", color: C.text, padding: "8px 10px", fontSize: 12, fontWeight: 500, textAlign: "left", display: "flex", alignItems: "center", gap: 8 }}
                 >
-                  <Icon name="play" size={12} color={C.muted} />
-                  Replay demo walkthrough
+                  <Icon name="settings" size={13} color={C.muted} />
+                  Settings & keys
                 </button>
                 <button
-                  onClick={() => {
-                    setUserMenuOpen(false);
-                    onSignOut();
-                  }}
-                  style={{
-                    width: "100%",
-                    border: "none",
-                    borderRadius: 12,
-                    background: "#fff3f3",
-                    color: C.danger,
-                    padding: "9px 10px",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
+                  onClick={() => { setUserMenuOpen(false); onStartDemo(); }}
+                  style={{ width: "100%", border: "none", borderRadius: 8, background: "transparent", color: C.text, padding: "8px 10px", fontSize: 12, fontWeight: 500, textAlign: "left", display: "flex", alignItems: "center", gap: 8 }}
                 >
-                  <Icon name="close" size={12} color={C.danger} />
-                  Sign out and clear session
+                  <Icon name="play" size={13} color={C.muted} />
+                  Replay walkthrough
+                </button>
+                <button
+                  onClick={() => { setUserMenuOpen(false); onSignOut(); }}
+                  style={{ width: "100%", border: "none", borderRadius: 8, background: "transparent", color: C.danger, padding: "8px 10px", fontSize: 12, fontWeight: 500, textAlign: "left", display: "flex", alignItems: "center", gap: 8 }}
+                >
+                  <Icon name="close" size={13} color={C.danger} />
+                  Sign out
                 </button>
               </div>
             )}
           </div>
         </div>
-      </div>
+      </aside>
 
-      <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
-        <div
-          data-tour="agent-rail"
-          style={{
-            width: 220,
-            background: C.surface,
-            borderRight: `1px solid ${C.border}`,
-            overflowY: "auto",
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ padding: "14px 12px 10px" }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                background: C.surface,
-                border: `1px solid ${C.border}`,
-                borderRadius: 8,
-                padding: "9px 10px",
-                color: C.hint,
-                fontSize: 13,
-                height: 40,
-              }}
-            >
-              <Icon name="search" size={14} color={C.hint} />
-              Search agents
-            </div>
-          </div>
-
-          <div
-            data-tour="agent-inspector"
-            style={{
-              margin: "0 12px 14px",
-              padding: "12px 12px 13px",
-              borderRadius: 10,
-              border: `1px solid ${C.border}`,
-              background: C.sidebarL,
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {inspectedAgent.name}
-                </div>
-                <div style={{ fontSize: 11, color: C.muted, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                  {inspectedAgent.role}
-                </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ ...getSignalDotStyle(inspectedSignal), width: 8, height: 8 }} />
-                <span style={{ fontSize: 10, color: C.muted }}>{SIGNAL_LABELS[inspectedSignal]}</span>
-              </div>
-            </div>
-
-            <div style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 600, marginBottom: 4 }}>
-              Process
-            </div>
-            <div style={{ fontSize: 11, color: C.text, lineHeight: 1.55, marginBottom: 10 }}>
-              {inspectedGuide.process}
-            </div>
-
-            <div style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 600, marginBottom: 4 }}>
-              Prompt Preview
-            </div>
-            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.55, marginBottom: 10 }}>
-              {inspectedGuide.prompt}
-            </div>
-
-            <div style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 600, marginBottom: 4 }}>
-              How It Works
-            </div>
-            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.55 }}>
-              {inspectedGuide.howItWorks}
-            </div>
-          </div>
-
-          {GROUPS_ORDER.map((group) => {
-            const entries = AGENTS.filter((agent) => agent.group === group);
-            if (!entries.length) return null;
-            return (
-              <div key={group} style={{ marginBottom: 6 }}>
-                <div
-                  style={{
-                    padding: "8px 16px 4px",
-                    fontSize: 11,
-                    color: C.muted,
-                    textTransform: "uppercase",
-                    letterSpacing: ".08em",
-                    fontWeight: 600,
-                  }}
-                >
-                  {group}
-                </div>
-                {entries.map((agent) => {
-                  const signal = getSignalState(agent.id);
-                  const signalStyle = SIGNAL_STYLES[signal];
-                  const highlighted = signal !== "idle";
-                  const isInspected = inspectedAgent.id === agent.id;
-                  return (
-                    <div
-                      key={agent.id}
-                      onMouseEnter={() => setInspectedAgentId(agent.id)}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        margin: "0 8px 2px",
-                        padding: "8px 10px",
-                        borderRadius: 8,
-                        borderLeft: signalStyle.borderLeft,
-                        background: isInspected ? C.accentL : highlighted ? C.sidebarL : "transparent",
-                        cursor: "help",
-                      }}
-                    >
-                      <Icon name={agent.icon} size={14} color={highlighted ? agent.color : C.muted} strokeWidth={1.6} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: highlighted || isInspected ? 600 : 500, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {agent.name}
-                        </div>
-                        <div style={{ fontSize: 10, color: C.hint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {agent.api.toUpperCase()}
-                        </div>
-                      </div>
-                      <div style={getSignalDotStyle(signal)} />
-                    </div>
-                  );
-                })}
-              </div>
-            );
-          })}
-        </div>
-
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
-          {children}
-        </div>
-      </div>
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", minWidth: 0 }}>
+        {children}
+      </main>
     </div>
   );
 }

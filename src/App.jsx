@@ -399,6 +399,7 @@ export default function App() {
         {tab === "chat" && (
           <ChatTab
             key={`chat-${chatSessionVersion}`}
+            agentSignals={agentSignals}
             demoPrompt={DEMO_PROMPT}
             demoRunId={demoRunId}
             mode={mode}
