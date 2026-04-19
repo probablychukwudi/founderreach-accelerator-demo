@@ -255,6 +255,8 @@ function sleep(ms) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
 }
 
+const CHAT_DESKTOP_COLUMNS = "minmax(280px, 320px) minmax(440px, 1fr) minmax(240px, 280px)";
+
 export function ChatTab({
   agentSignals = {},
   demoPrompt,
@@ -563,17 +565,26 @@ export function ChatTab({
   };
 
   return (
-    <div data-tour="chat-root" style={{ display: "flex", flex: 1, overflow: "hidden", minWidth: 0 }}>
+    <div
+      data-tour="chat-root"
+      style={{
+        display: "grid",
+        gridTemplateColumns: CHAT_DESKTOP_COLUMNS,
+        flex: 1,
+        width: "100%",
+        minWidth: 0,
+        overflow: "hidden",
+      }}
+    >
       {/* conversation_list (340) */}
       <section
         data-tour="run-list"
         style={{
-          width: 340,
-          flexShrink: 0,
           background: C.surface,
           borderRight: `1px solid ${C.border}`,
           display: "flex",
           flexDirection: "column",
+          minWidth: 0,
         }}
       >
         <div style={{ height: 56, padding: "0 16px", display: "flex", alignItems: "center", borderBottom: `1px solid ${C.border}` }}>
@@ -719,12 +730,11 @@ export function ChatTab({
       {/* chat_main (560) */}
       <section
         style={{
-          width: 560,
-          flexShrink: 0,
           background: C.surface,
           borderRight: `1px solid ${C.border}`,
           display: "flex",
           flexDirection: "column",
+          minWidth: 0,
         }}
       >
         {/* toolbar */}
@@ -888,12 +898,11 @@ export function ChatTab({
       <aside
         data-tour="run-context"
         style={{
-          width: 280,
-          flexShrink: 0,
           background: C.surface,
           display: "flex",
           flexDirection: "column",
           overflow: "hidden",
+          minWidth: 0,
         }}
       >
         <div style={{ height: 56, padding: "0 16px", display: "flex", alignItems: "center", borderBottom: `1px solid ${C.border}` }}>
