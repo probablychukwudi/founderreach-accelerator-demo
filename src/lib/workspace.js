@@ -1,9 +1,9 @@
 import { AGENT_BY_ID } from "./founderReachCore";
 
 export const seedContacts = [
-  { id: "seed-contact-1", name: "Sequoia Scout", role: "Partner", company: "Sequoia Capital", type: "Investor", stage: "Meeting Booked", agent: "vc", notes: "Strong fit for AI infrastructure and founder-led distribution stories.", track: "VC", email: "partners@sequoiacapital.com", lastContact: "2h ago" },
-  { id: "seed-contact-2", name: "Maya Chen", role: "Head of Partnerships", company: "Creator Stack Labs", type: "Prospect", stage: "Researching", agent: "sales", notes: "Potential design partner for creator workflow automation.", track: "Sales", email: "maya@creatorstacklabs.com", lastContact: "Yesterday" },
-  { id: "seed-contact-3", name: "Dr. Amina Patel", role: "Lab Director", company: "Northwestern Applied AI Lab", type: "Research", stage: "Intro Sent", agent: "research", notes: "Interested in founder productivity systems and AI-mediated workflows.", track: "Research", email: "apatel@northwestern.edu", lastContact: "3d ago" },
+  { id: "seed-contact-1", name: "Sequoia Scout", role: "Partner", company: "Sequoia Capital", type: "Investor", stage: "Meeting Booked", agent: "vc", notes: "Strong fit for AI infrastructure and founder-led distribution stories.", track: "VC", email: "partners@sequoiacapital.example", lastContact: "2h ago" },
+  { id: "seed-contact-2", name: "Maya Chen", role: "Head of Partnerships", company: "Creator Stack Labs", type: "Prospect", stage: "Researching", agent: "sales", notes: "Potential design partner for creator workflow automation.", track: "Sales", email: "maya@creatorstacklabs.example", lastContact: "Yesterday" },
+  { id: "seed-contact-3", name: "Dr. Amina Patel", role: "Lab Director", company: "Northwestern Applied AI Lab", type: "Research", stage: "Intro Sent", agent: "research", notes: "Interested in founder productivity systems and AI-mediated workflows.", track: "Research", email: "apatel@northwestern.example", lastContact: "3d ago" },
 ];
 
 export const seedAssets = [

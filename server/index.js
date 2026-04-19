@@ -7,6 +7,7 @@ import {
   executeAgentRun,
   getWorkspaceStatus,
   parseClientRuntimeConfig,
+  publicErrorMessage,
   publishAction,
   resolveRuntimeEnv,
   sendEmailAction,
@@ -14,9 +15,35 @@ import {
 
 const app = express();
 const port = Number(process.env.PORT || 3001);
+const allowedOrigins = new Set(
+  (process.env.FOUNDERREACH_ALLOWED_ORIGINS || "http://localhost:3000,http://127.0.0.1:3000")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+);
 
-app.use(cors());
-app.use(express.json({ limit: "2mb" }));
+app.disable("x-powered-by");
+app.set("trust proxy", false);
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error("CORS origin not allowed"));
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "x-founderreach-keys", "x-founderreach-demo"],
+    maxAge: 600,
+  })
+);
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: false, limit: "100kb" }));
+
+function sendError(res, error, status = 500, fallback = "Internal Server Error") {
+  res.status(status).json({ error: publicErrorMessage(error, process.env, fallback) });
+}
 
 function runtimeEnvForRequest(req) {
   const { apiKeys, demoMode } = parseClientRuntimeConfig(
@@ -36,7 +63,7 @@ app.post("/api/orchestrate", async (req, res) => {
     const history = req.body?.history || [];
     res.json(await buildPlan(prompt, history, runtimeEnvForRequest(req)));
   } catch (error) {
-    res.status(500).send(error.message);
+    sendError(res, error);
   }
 });
 
@@ -58,8 +85,8 @@ app.post("/api/agents/stream", async (req, res) => {
     send("done", { ok: true });
   } catch (error) {
     send("final", {
-      result: { error: error.message },
-      summary: `Run failed: ${error.message}`,
+      result: { error: publicErrorMessage(error, process.env, "Run failed") },
+      summary: "Run failed",
     });
   } finally {
     res.end();
@@ -70,7 +97,7 @@ app.post("/api/actions/send-email", async (req, res) => {
   try {
     res.json(await sendEmailAction(req.body?.contact, runtimeEnvForRequest(req)));
   } catch (error) {
-    res.status(500).send(error.message);
+    sendError(res, error);
   }
 });
 
@@ -78,7 +105,7 @@ app.post("/api/actions/book-meeting", async (req, res) => {
   try {
     res.json(await bookMeetingAction(req.body?.contact));
   } catch (error) {
-    res.status(500).send(error.message);
+    sendError(res, error);
   }
 });
 
@@ -86,8 +113,16 @@ app.post("/api/actions/publish", async (req, res) => {
   try {
     res.json(await publishAction(req.body?.asset));
   } catch (error) {
-    res.status(500).send(error.message);
+    sendError(res, error);
   }
+});
+
+app.use((_req, res) => {
+  res.status(404).json({ error: "Not Found" });
+});
+
+app.use((error, _req, res, _next) => {
+  sendError(res, error);
 });
 
 app.listen(port, () => {

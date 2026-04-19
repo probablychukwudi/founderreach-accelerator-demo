@@ -1,4 +1,4 @@
-import { buildPlan, parseClientRuntimeConfig, resolveRuntimeEnv } from "../lib/founderReachBackend.js";
+import { buildPlan, parseClientRuntimeConfig, publicErrorMessage, resolveRuntimeEnv } from "../lib/founderReachBackend.js";
 
 export default {
   async fetch(request) {
@@ -16,7 +16,7 @@ export default {
       );
       return Response.json(await buildPlan(prompt, history, resolveRuntimeEnv(process.env, runtime)));
     } catch (error) {
-      return new Response(error.message, { status: 500 });
+      return new Response(publicErrorMessage(error), { status: 500 });
     }
   },
 };

@@ -1,6 +1,7 @@
 {
-  "name": "tiny-fish-accelerator-product-build",
+  "name": "founderreach-accelerator-demo",
   "private": true,
+  "description": "FounderReach accelerator demo with multi-agent onboarding, CRM, calendar, vault, and Vercel-ready APIs.",
   "version": "0.0.0",
   "type": "module",
   "scripts": {

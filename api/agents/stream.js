@@ -1,4 +1,4 @@
-import { executeAgentRun, parseClientRuntimeConfig, resolveRuntimeEnv } from "../../lib/founderReachBackend.js";
+import { executeAgentRun, parseClientRuntimeConfig, publicErrorMessage, resolveRuntimeEnv } from "../../lib/founderReachBackend.js";
 
 export default {
   async fetch(request) {
@@ -30,9 +30,10 @@ export default {
           send("final", result);
           send("done", { ok: true });
         } catch (error) {
+          const message = publicErrorMessage(error, process.env, "Run failed");
           send("final", {
-            result: { error: error.message },
-            summary: `Run failed: ${error.message}`,
+            result: { error: message },
+            summary: "Run failed",
           });
         } finally {
           controller.close();

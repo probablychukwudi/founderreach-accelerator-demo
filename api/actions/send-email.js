@@ -1,4 +1,4 @@
-import { parseClientRuntimeConfig, resolveRuntimeEnv, sendEmailAction } from "../../lib/founderReachBackend.js";
+import { parseClientRuntimeConfig, publicErrorMessage, resolveRuntimeEnv, sendEmailAction } from "../../lib/founderReachBackend.js";
 
 export default {
   async fetch(request) {
@@ -14,7 +14,7 @@ export default {
       );
       return Response.json(await sendEmailAction(body?.contact, resolveRuntimeEnv(process.env, runtime)));
     } catch (error) {
-      return new Response(error.message, { status: 500 });
+      return new Response(publicErrorMessage(error), { status: 500 });
     }
   },
 };

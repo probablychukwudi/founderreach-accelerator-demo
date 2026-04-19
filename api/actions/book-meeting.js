@@ -1,4 +1,4 @@
-import { bookMeetingAction } from "../../lib/founderReachBackend.js";
+import { bookMeetingAction, publicErrorMessage } from "../../lib/founderReachBackend.js";
 
 export default {
   async fetch(request) {
@@ -10,7 +10,7 @@ export default {
       const body = await request.json().catch(() => ({}));
       return Response.json(await bookMeetingAction(body?.contact));
     } catch (error) {
-      return new Response(error.message, { status: 500 });
+      return new Response(publicErrorMessage(error), { status: 500 });
     }
   },
 };
