@@ -48,15 +48,15 @@ function FounderMessage({ text }) {
   return (
     <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
       <div style={{ maxWidth: 560 }}>
-        <div style={{ fontSize: 10, color: C.hint, textAlign: "right", marginBottom: 4 }}>You</div>
+        <div style={{ fontSize: 12, color: C.hint, textAlign: "right", marginBottom: 4 }}>You</div>
         <div
           style={{
-            padding: "11px 14px",
-            borderRadius: "14px 4px 14px 14px",
-            background: C.text,
-            color: "#fff",
-            fontSize: 13,
-            lineHeight: 1.65,
+            padding: "10px 14px",
+            borderRadius: 10,
+            background: C.accent,
+            color: "#FFFFFF",
+            fontSize: 14,
+            lineHeight: 1.5,
           }}
         >
           {text}
@@ -117,11 +117,11 @@ function AgentMessage({ message }) {
         <div
           style={{
             border: `1px solid ${C.border}`,
-            background: C.surface,
-            borderRadius: "4px 14px 14px 14px",
-            padding: "12px 14px",
-            fontSize: 13,
-            lineHeight: 1.7,
+            background: C.incomingBubble || "#F3F4F6",
+            borderRadius: 10,
+            padding: "10px 14px",
+            fontSize: 14,
+            lineHeight: 1.55,
             color: C.text,
           }}
         >
@@ -228,7 +228,7 @@ function AgentMessage({ message }) {
                         marginTop: 10,
                         padding: 12,
                         borderRadius: 12,
-                        background: "#f5f7f5",
+                        background: "#F8F9FB",
                         border: `1px solid ${C.border}`,
                         fontSize: 11,
                         lineHeight: 1.55,
@@ -476,10 +476,10 @@ export function ChatTab({
     <div data-tour="chat-root" style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", minWidth: 0 }}>
       <div
         style={{
-          padding: "8px 18px",
-          background: isDemoMode ? "#fff7e8" : missingKeys.length ? "#fef3cd" : C.accentL,
-          color: isDemoMode ? "#b45309" : missingKeys.length ? C.warn : C.accent,
-          borderBottom: `1px solid ${isDemoMode ? "#f2d39b" : missingKeys.length ? "#f8dc8c" : C.accentM}`,
+          padding: "10px 18px",
+          background: isDemoMode ? "#FFF7E6" : missingKeys.length ? "#FEF3CD" : C.accentL,
+          color: isDemoMode ? "#B45309" : missingKeys.length ? C.warn : C.accent,
+          borderBottom: `1px solid ${isDemoMode ? "#FDE4B5" : missingKeys.length ? "#F8DC8C" : C.accentM}`,
           fontSize: 12,
           display: "flex",
           alignItems: "center",
@@ -489,7 +489,7 @@ export function ChatTab({
         <Icon
           name={isDemoMode ? "play" : missingKeys.length ? "slash" : "check"}
           size={13}
-          color={isDemoMode ? "#b45309" : missingKeys.length ? C.warn : C.accent}
+          color={isDemoMode ? "#B45309" : missingKeys.length ? C.warn : C.accent}
         />
         {isDemoMode
           ? "Demo Mode is active. FounderReach will fabricate a slower showcase run so new visitors can understand the full workflow."
@@ -513,13 +513,14 @@ export function ChatTab({
             data-tour="chat-compose"
             style={{
               flex: 1,
-              border: `1.5px solid ${C.border}`,
-              background: C.base,
-              borderRadius: 16,
+              border: `1px solid ${C.border}`,
+              background: C.surface,
+              borderRadius: 8,
               padding: "10px 12px",
               display: "flex",
               gap: 8,
               alignItems: "flex-start",
+              height: 52,
             }}
           >
             <Icon name="flash" size={14} color={C.hint} />
@@ -542,8 +543,8 @@ export function ChatTab({
                 background: "transparent",
                 resize: "none",
                 color: C.text,
-                fontSize: 13,
-                lineHeight: 1.6,
+                fontSize: 14,
+                lineHeight: 1.5,
                 maxHeight: 120,
               }}
               onInput={(event) => {
@@ -557,21 +558,21 @@ export function ChatTab({
             onClick={() => runPromptWithText(input)}
             disabled={!input.trim() || busy}
             style={{
-              minWidth: 110,
-              height: 44,
-              borderRadius: 14,
+              minWidth: 96,
+              height: 40,
+              borderRadius: 8,
               border: "none",
-              background: input.trim() && !busy ? C.accent : C.border,
-              color: input.trim() && !busy ? "#fff" : C.hint,
+              background: input.trim() && !busy ? C.accent : C.base,
+              color: input.trim() && !busy ? "#FFFFFF" : C.hint,
               fontSize: 13,
-              fontWeight: 700,
+              fontWeight: 600,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
               gap: 7,
             }}
           >
-            <Icon name="send" size={13} color={input.trim() && !busy ? "#fff" : C.hint} />
+            <Icon name="send" size={13} color={input.trim() && !busy ? "#FFFFFF" : C.hint} />
             {busy ? (runningAgents.size > 0 ? `${runningAgents.size} running` : "Running") : "Run"}
           </button>
         </div>
@@ -588,8 +589,8 @@ export function ChatTab({
                 border: `1px solid ${C.border}`,
                 background: C.surface,
                 color: C.muted,
-                padding: "6px 10px",
-                fontSize: 11,
+                padding: "6px 12px",
+                fontSize: 12,
                 lineHeight: 1.4,
               }}
             >

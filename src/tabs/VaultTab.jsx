@@ -5,21 +5,21 @@ import { Icon } from "../components/Icon";
 
 const typeStyles = {
   Tweet: { background: C.base, color: C.muted },
-  Newsletter: { background: "#6d28d9", color: "#fff" },
-  "Video Script": { background: "#dc2626", color: "#fff" },
-  Podcast: { background: "#7c3aed", color: "#fff" },
-  Course: { background: "#0f6e56", color: "#fff" },
-  Email: { background: C.text, color: "#fff" },
-  Image: { background: "#e6f2e8", color: "#258530" },
-  Video: { background: "#dc2626", color: "#fff" },
-  Strategy: { background: "#258530", color: "#fff" },
-  SEO: { background: "#0369a1", color: "#fff" },
-  Revenue: { background: "#b45309", color: "#fff" },
-  Design: { background: "#db2777", color: "#fff" },
-  Technical: { background: "#0369a1", color: "#fff" },
-  Analytics: { background: "#0891b2", color: "#fff" },
-  Calendar: { background: "#258530", color: "#fff" },
-  System: { background: C.muted, color: "#fff" },
+  Newsletter: { background: "#F3EEFC", color: "#6D28D9" },
+  "Video Script": { background: "#FDECEC", color: "#DC2626" },
+  Podcast: { background: "#F3EEFC", color: "#7C3AED" },
+  Course: { background: "#E6F4EE", color: "#0F6E56" },
+  Email: { background: C.accentL, color: C.accent },
+  Image: { background: C.accentL, color: C.accent },
+  Video: { background: "#FDECEC", color: "#DC2626" },
+  Strategy: { background: C.accentL, color: C.accent },
+  SEO: { background: "#E6F0FA", color: "#0369A1" },
+  Revenue: { background: "#FCF1E3", color: "#B45309" },
+  Design: { background: "#FCECF4", color: "#DB2777" },
+  Technical: { background: "#E6F0FA", color: "#0369A1" },
+  Analytics: { background: "#E6F4F7", color: "#0891B2" },
+  Calendar: { background: C.accentL, color: C.accent },
+  System: { background: C.base, color: C.muted },
 };
 
 export function VaultTab({ assets, notify, onPublishAsset }) {
@@ -52,7 +52,7 @@ export function VaultTab({ assets, notify, onPublishAsset }) {
 
   return (
     <div data-tour="vault-root" style={{ display: "flex", flex: 1, overflow: "hidden", minWidth: 0 }}>
-      <div style={{ width: 246, borderRight: `1px solid ${C.border}`, background: "#f5f7f5", overflowY: "auto", flexShrink: 0 }}>
+      <div style={{ width: 246, borderRight: `1px solid ${C.border}`, background: "#F8F9FB", overflowY: "auto", flexShrink: 0 }}>
         <div style={{ padding: "14px 14px 8px", fontSize: 10, fontWeight: 800, color: C.muted, textTransform: "uppercase", letterSpacing: ".08em" }}>Vault</div>
         {VAULT_SECTIONS.map((section) => {
           const count = assets.filter((asset) => asset.section === section.id).length;
@@ -115,6 +115,12 @@ export function VaultTab({ assets, notify, onPublishAsset }) {
                           <span style={{ fontSize: 10, color: C.muted }}>{asset.agent}</span>
                           <span style={{ fontSize: 9, fontWeight: 800, padding: "4px 7px", borderRadius: 999, ...style }}>{asset.type}</span>
                         </div>
+                        {asset.published && (
+                          <div style={{ marginTop: 8, fontSize: 9, fontWeight: 800, color: C.accent, display: "flex", alignItems: "center", gap: 4 }}>
+                            <Icon name="check" size={10} color={C.accent} />
+                            Published · {(asset.publishedTo || []).map((entry) => entry.platform).join(" · ") || "web"}
+                          </div>
+                        )}
                       </div>
                     </button>
                   );
@@ -131,21 +137,21 @@ export function VaultTab({ assets, notify, onPublishAsset }) {
                   </button>
                 </div>
                 <div style={{ flex: 1, overflowY: "auto", padding: 16, display: "grid", gap: 12 }}>
-                  {selectedAsset.imageUrl && <img src={selectedAsset.imageUrl} alt={selectedAsset.name} style={{ borderRadius: 12, border: `1px solid ${C.border}` }} />}
-                  {selectedAsset.videoUrl && <video controls style={{ borderRadius: 12, border: `1px solid ${C.border}` }}><source src={selectedAsset.videoUrl} /></video>}
+                  {selectedAsset.imageUrl && <img src={selectedAsset.imageUrl} alt={selectedAsset.name} style={{ borderRadius: 8, border: `1px solid ${C.border}` }} />}
+                  {selectedAsset.videoUrl && <video controls style={{ borderRadius: 8, border: `1px solid ${C.border}` }}><source src={selectedAsset.videoUrl} /></video>}
                   <div style={{ fontSize: 11, color: C.muted }}>{selectedAsset.agent} agent · {selectedAsset.time}</div>
-                  <pre style={{ padding: 12, borderRadius: 12, border: `1px solid ${C.border}`, background: "#f5f7f5", fontSize: 11, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{buildAssetText(selectedAsset)}</pre>
+                  <pre style={{ padding: 12, borderRadius: 8, border: `1px solid ${C.border}`, background: "#F8F9FB", fontSize: 11, lineHeight: 1.6, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{buildAssetText(selectedAsset)}</pre>
                 </div>
                 <div style={{ padding: 16, borderTop: `1px solid ${C.border}`, display: "grid", gap: 8 }}>
-                  <button onClick={() => handleCopy(selectedAsset)} style={{ width: "100%", borderRadius: 12, border: "none", background: C.text, color: "#fff", padding: "11px 14px", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <button onClick={() => handleCopy(selectedAsset)} style={{ width: "100%", borderRadius: 8, border: "none", background: C.text, color: "#fff", padding: "11px 14px", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                     <Icon name="copy" size={13} color="#fff" />
                     Copy
                   </button>
-                  <button onClick={() => onPublishAsset(selectedAsset)} style={{ width: "100%", borderRadius: 12, border: `1px solid ${C.accentM}`, background: C.accentL, color: C.accent, padding: "11px 14px", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <button onClick={() => onPublishAsset(selectedAsset)} style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.accentM}`, background: C.accentL, color: C.accent, padding: "11px 14px", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                     <Icon name="globe" size={13} color={C.accent} />
                     Publish
                   </button>
-                  <button onClick={() => downloadAsset(selectedAsset)} style={{ width: "100%", borderRadius: 12, border: `1px solid ${C.border}`, background: C.surface, color: C.text, padding: "11px 14px", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                  <button onClick={() => downloadAsset(selectedAsset)} style={{ width: "100%", borderRadius: 8, border: `1px solid ${C.border}`, background: C.surface, color: C.text, padding: "11px 14px", fontSize: 12, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                     <Icon name="download" size={13} color={C.muted} />
                     Download
                   </button>

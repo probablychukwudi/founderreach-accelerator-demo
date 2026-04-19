@@ -218,7 +218,7 @@ export default function App() {
     setMode("Demo Mode");
     resetWorkspaceToSeed();
     setDemoRunId((current) => current + 1);
-    setTourState({ open: true, index: 0, playing: true });
+    setTourState({ open: true, index: 0, playing: false });
     notify("Demo walkthrough started. FounderReach is running in fabricated showcase mode.", "info");
   }, [notify, resetWorkspaceToSeed, setMode, setWelcomeDismissed]);
 
@@ -262,16 +262,47 @@ export default function App() {
       try {
         const result = await sendEmail(contact, { demoMode: mode === "Demo Mode" });
         notify(result.message, "success");
+        const email = result?.email;
+        if (email) {
+          setVaultAssets((current) => {
+            const id = `asset-sent-${contact.id}-${Date.now()}`;
+            const entry = {
+              id,
+              name: `Email: ${email.toName} — ${email.subject}`,
+              type: "Email",
+              icon: "mail",
+              agent: "outreach",
+              section: "promo",
+              time: "just now",
+              content: {
+                subject: email.subject,
+                to_name: email.toName,
+                to: email.to,
+                body: email.body,
+                sent_at: email.sentAt,
+                status: email.status,
+              },
+            };
+            return mergeUniqueRecords([entry], current);
+          });
+        }
         setCRMContacts((current) =>
           current.map((item) =>
-            item.id === contact.id ? { ...item, stage: "Contacted", lastContact: "just now" } : item
+            item.id === contact.id
+              ? {
+                  ...item,
+                  stage: "Contacted",
+                  lastContact: "just now",
+                  lastEmail: email ? { subject: email.subject, sentAt: email.sentAt } : item.lastEmail,
+                }
+              : item
           )
         );
       } catch (error) {
         notify(error.message, "error");
       }
     },
-    [mode, notify, setCRMContacts]
+    [mode, notify, setCRMContacts, setVaultAssets]
   );
 
   const handleBookMeeting = useCallback(
@@ -279,16 +310,42 @@ export default function App() {
       try {
         const result = await bookMeeting(contact, { demoMode: mode === "Demo Mode" });
         notify(result.message, "success");
+        const meeting = result?.meeting;
+        if (meeting) {
+          setCalendarEvents((current) => {
+            const id = `event-meeting-${contact.id}-${Date.now()}`;
+            const entry = {
+              id,
+              day: meeting.day,
+              slot: meeting.slot,
+              title: meeting.title,
+              bg: meeting.bg || "#181C23",
+              color: meeting.color || "#fff",
+              startsAt: meeting.startsAt,
+              endsAt: meeting.endsAt,
+              with: meeting.with,
+            };
+            return mergeUniqueRecords([entry], current);
+          });
+        }
         setCRMContacts((current) =>
           current.map((item) =>
-            item.id === contact.id ? { ...item, stage: "Meeting Booked", lastContact: "just now" } : item
+            item.id === contact.id
+              ? {
+                  ...item,
+                  stage: "Meeting Booked",
+                  lastContact: "just now",
+                  nextMeeting: meeting ? { startsAt: meeting.startsAt, title: meeting.title } : item.nextMeeting,
+                }
+              : item
           )
         );
+        setTab("calendar");
       } catch (error) {
         notify(error.message, "error");
       }
     },
-    [mode, notify, setCRMContacts]
+    [mode, notify, setCRMContacts, setCalendarEvents]
   );
 
   const handlePublishAsset = useCallback(
@@ -296,11 +353,26 @@ export default function App() {
       try {
         const result = await publishAsset(asset, { demoMode: mode === "Demo Mode" });
         notify(result.message, "success");
+        const publish = result?.publish;
+        if (publish) {
+          setVaultAssets((current) =>
+            current.map((item) =>
+              item.id === asset.id
+                ? {
+                    ...item,
+                    published: true,
+                    publishedAt: publish.publishedAt,
+                    publishedTo: publish.publishedTo,
+                  }
+                : item
+            )
+          );
+        }
       } catch (error) {
         notify(error.message, "error");
       }
     },
-    [mode, notify]
+    [mode, notify, setVaultAssets]
   );
 
   const handleSignOut = useCallback(() => {

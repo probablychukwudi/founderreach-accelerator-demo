@@ -6,7 +6,7 @@ export function CalendarTab({ events }) {
   const dates = [14, 15, 16, 17, 18];
   const times = ["8 AM", "9 AM", "10 AM", "11 AM", "12 PM", "1 PM", "2 PM", "3 PM", "4 PM", "5 PM"];
   const staticEvents = [
-    { day: 0, slot: 1, title: "Investor intro call", bg: "#091F17", color: "#fff" },
+    { day: 0, slot: 1, title: "Investor intro call", bg: "#181C23", color: "#fff" },
     { day: 1, slot: 3, title: "Research partner sync", bg: C.accentL, color: C.accent },
     { day: 2, slot: 5, title: "YouTube script polish", bg: "#dc2626", color: "#fff" },
     { day: 3, slot: 6, title: "Newsletter send", bg: "#6d28d9", color: "#fff" },
@@ -46,7 +46,7 @@ export function CalendarTab({ events }) {
         </div>
 
         <div style={{ fontSize: 11, color: C.muted, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 700, marginBottom: 8 }}>Content types</div>
-        {[{ label: "Investor / VC", color: "#091F17" }, { label: "YouTube", color: "#dc2626" }, { label: "Newsletter", color: "#6d28d9" }, { label: "Tweet thread", color: C.accent }, { label: "Podcast", color: "#7c3aed" }, { label: "Agent actions", color: C.accentM }].map((entry) => (
+        {[{ label: "Investor / VC", color: "#181C23" }, { label: "YouTube", color: "#dc2626" }, { label: "Newsletter", color: "#6d28d9" }, { label: "Tweet thread", color: C.accent }, { label: "Podcast", color: "#7c3aed" }, { label: "Agent actions", color: C.accentM }].map((entry) => (
           <div key={entry.label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0" }}>
             <div style={{ width: 9, height: 9, borderRadius: 3, background: entry.color }} />
             <span style={{ fontSize: 12, color: C.text }}>{entry.label}</span>

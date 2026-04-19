@@ -5,29 +5,29 @@ import { AGENTS, AGENT_BY_ID, C, getAgentGuide, getModeAgents, GROUPS_ORDER, OPE
 
 const SIGNAL_STYLES = {
   idle: {
-    background: "#1e3a2a",
+    background: "#D1D5DB",
     boxShadow: "none",
     borderLeft: "2px solid transparent",
   },
   mode: {
-    background: "#22c55e",
-    boxShadow: "0 0 10px rgba(34,197,94,0.85), 0 0 18px rgba(34,197,94,0.35)",
-    borderLeft: "2px solid #22c55e",
+    background: "#22C55E",
+    boxShadow: "none",
+    borderLeft: "2px solid #22C55E",
   },
   running: {
-    background: "#ef4444",
-    boxShadow: "0 0 10px rgba(239,68,68,0.85), 0 0 18px rgba(239,68,68,0.35)",
-    borderLeft: "2px solid #ef4444",
+    background: "#EF4444",
+    boxShadow: "0 0 0 3px rgba(239,68,68,0.18)",
+    borderLeft: "2px solid #EF4444",
   },
   pending: {
-    background: "#eab308",
-    boxShadow: "0 0 10px rgba(234,179,8,0.85), 0 0 18px rgba(234,179,8,0.35)",
-    borderLeft: "2px solid #eab308",
+    background: "#F59E0B",
+    boxShadow: "none",
+    borderLeft: "2px solid #F59E0B",
   },
   issue: {
-    background: "#eab308",
-    boxShadow: "0 0 10px rgba(234,179,8,0.85), 0 0 18px rgba(234,179,8,0.35)",
-    borderLeft: "2px solid #eab308",
+    background: "#F59E0B",
+    boxShadow: "none",
+    borderLeft: "2px solid #F59E0B",
   },
 };
 
@@ -296,10 +296,9 @@ export function Shell({
                   top: 38,
                   right: 0,
                   width: 230,
-                  borderRadius: 16,
+                  borderRadius: 10,
                   border: `1px solid ${C.border}`,
                   background: C.surface,
-                  boxShadow: "0 18px 50px rgba(9,31,23,0.14)",
                   padding: 10,
                   zIndex: 20,
                 }}
@@ -365,9 +364,9 @@ export function Shell({
         <div
           data-tour="agent-rail"
           style={{
-            width: 198,
-            background: C.sidebar,
-            borderRight: `1px solid ${C.sidebarB}`,
+            width: 220,
+            background: C.surface,
+            borderRight: `1px solid ${C.border}`,
             overflowY: "auto",
             flexShrink: 0,
           }}
@@ -378,15 +377,16 @@ export function Shell({
                 display: "flex",
                 alignItems: "center",
                 gap: 8,
-                background: C.sidebarL,
-                border: `1px solid ${C.sidebarB}`,
-                borderRadius: 9,
-                padding: "8px 10px",
-                color: "rgba(255,255,255,0.7)",
-                fontSize: 11,
+                background: C.surface,
+                border: `1px solid ${C.border}`,
+                borderRadius: 8,
+                padding: "9px 10px",
+                color: C.hint,
+                fontSize: 13,
+                height: 40,
               }}
             >
-              <Icon name="search" size={13} color="rgba(255,255,255,0.28)" />
+              <Icon name="search" size={14} color={C.hint} />
               Search agents
             </div>
           </div>
@@ -394,46 +394,46 @@ export function Shell({
           <div
             data-tour="agent-inspector"
             style={{
-              margin: "0 12px 12px",
+              margin: "0 12px 14px",
               padding: "12px 12px 13px",
-              borderRadius: 12,
-              border: `1px solid ${C.sidebarB}`,
+              borderRadius: 10,
+              border: `1px solid ${C.border}`,
               background: C.sidebarL,
             }}
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 8 }}>
               <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "#ffffff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {inspectedAgent.name}
                 </div>
-                <div style={{ fontSize: 9, color: "rgba(255,255,255,0.45)", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <div style={{ fontSize: 11, color: C.muted, marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                   {inspectedAgent.role}
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <div style={{ ...getSignalDotStyle(inspectedSignal), width: 8, height: 8 }} />
-                <span style={{ fontSize: 9, color: "rgba(255,255,255,0.72)" }}>{SIGNAL_LABELS[inspectedSignal]}</span>
+                <span style={{ fontSize: 10, color: C.muted }}>{SIGNAL_LABELS[inspectedSignal]}</span>
               </div>
             </div>
 
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.28)", textTransform: "uppercase", letterSpacing: ".09em", marginBottom: 4 }}>
+            <div style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 600, marginBottom: 4 }}>
               Process
             </div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.88)", lineHeight: 1.5, marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: C.text, lineHeight: 1.55, marginBottom: 10 }}>
               {inspectedGuide.process}
             </div>
 
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.28)", textTransform: "uppercase", letterSpacing: ".09em", marginBottom: 4 }}>
+            <div style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 600, marginBottom: 4 }}>
               Prompt Preview
             </div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.72)", lineHeight: 1.5, marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.55, marginBottom: 10 }}>
               {inspectedGuide.prompt}
             </div>
 
-            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.28)", textTransform: "uppercase", letterSpacing: ".09em", marginBottom: 4 }}>
+            <div style={{ fontSize: 10, color: C.muted, textTransform: "uppercase", letterSpacing: ".08em", fontWeight: 600, marginBottom: 4 }}>
               How It Works
             </div>
-            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.72)", lineHeight: 1.5 }}>
+            <div style={{ fontSize: 11, color: C.muted, lineHeight: 1.55 }}>
               {inspectedGuide.howItWorks}
             </div>
           </div>
@@ -445,12 +445,12 @@ export function Shell({
               <div key={group} style={{ marginBottom: 6 }}>
                 <div
                   style={{
-                    padding: "6px 14px 4px",
-                    fontSize: 9,
-                    color: "rgba(255,255,255,0.24)",
+                    padding: "8px 16px 4px",
+                    fontSize: 11,
+                    color: C.muted,
                     textTransform: "uppercase",
-                    letterSpacing: ".12em",
-                    fontWeight: 700,
+                    letterSpacing: ".08em",
+                    fontWeight: 600,
                   }}
                 >
                   {group}
@@ -459,6 +459,7 @@ export function Shell({
                   const signal = getSignalState(agent.id);
                   const signalStyle = SIGNAL_STYLES[signal];
                   const highlighted = signal !== "idle";
+                  const isInspected = inspectedAgent.id === agent.id;
                   return (
                     <div
                       key={agent.id}
@@ -467,20 +468,20 @@ export function Shell({
                         display: "flex",
                         alignItems: "center",
                         gap: 8,
-                        margin: "0 6px 2px",
-                        padding: "7px 10px",
+                        margin: "0 8px 2px",
+                        padding: "8px 10px",
                         borderRadius: 8,
                         borderLeft: signalStyle.borderLeft,
-                        background: inspectedAgent.id === agent.id ? "rgba(255,255,255,0.06)" : highlighted ? "rgba(255,255,255,0.04)" : "transparent",
+                        background: isInspected ? C.accentL : highlighted ? C.sidebarL : "transparent",
                         cursor: "help",
                       }}
                     >
-                      <Icon name={agent.icon} size={13} color={highlighted ? agent.color : "rgba(255,255,255,0.45)"} />
+                      <Icon name={agent.icon} size={14} color={highlighted ? agent.color : C.muted} strokeWidth={1.6} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 11, fontWeight: highlighted ? 700 : 500, color: highlighted ? "#ffffff" : "rgba(255,255,255,0.65)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        <div style={{ fontSize: 13, fontWeight: highlighted || isInspected ? 600 : 500, color: C.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           {agent.name}
                         </div>
-                        <div style={{ fontSize: 9, color: "rgba(255,255,255,0.32)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        <div style={{ fontSize: 10, color: C.hint, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           {agent.api.toUpperCase()}
                         </div>
                       </div>
