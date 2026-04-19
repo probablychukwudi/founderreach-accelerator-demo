@@ -1,7 +1,25 @@
+import { buildRuntimeKeyPayload, getStoredApiKeys } from "../lib/session";
+
+function buildRuntimeHeaders(demoMode = false) {
+  const runtimeKeys = buildRuntimeKeyPayload(getStoredApiKeys());
+  const headers = {};
+
+  if (Object.keys(runtimeKeys).length) {
+    headers["x-founderreach-keys"] = JSON.stringify(runtimeKeys);
+  }
+
+  if (demoMode) {
+    headers["x-founderreach-demo"] = "1";
+  }
+
+  return headers;
+}
+
 async function request(url, options = {}) {
   const response = await fetch(url, {
     headers: {
       "Content-Type": "application/json",
+      ...buildRuntimeHeaders(options.demoMode),
       ...(options.headers || {}),
     },
     ...options,
@@ -19,30 +37,34 @@ export async function fetchStatus() {
   return request("/api/status", { method: "GET" });
 }
 
-export async function orchestrate(prompt, history = []) {
+export async function orchestrate(prompt, history = [], options = {}) {
   return request("/api/orchestrate", {
     method: "POST",
+    demoMode: options.demoMode,
     body: JSON.stringify({ prompt, history }),
   });
 }
 
-export async function sendEmail(contact) {
+export async function sendEmail(contact, options = {}) {
   return request("/api/actions/send-email", {
     method: "POST",
+    demoMode: options.demoMode,
     body: JSON.stringify({ contact }),
   });
 }
 
-export async function bookMeeting(contact) {
+export async function bookMeeting(contact, options = {}) {
   return request("/api/actions/book-meeting", {
     method: "POST",
+    demoMode: options.demoMode,
     body: JSON.stringify({ contact }),
   });
 }
 
-export async function publishAsset(asset) {
+export async function publishAsset(asset, options = {}) {
   return request("/api/actions/publish", {
     method: "POST",
+    demoMode: options.demoMode,
     body: JSON.stringify({ asset }),
   });
 }
@@ -64,10 +86,13 @@ function parseSseChunk(chunk) {
   return event;
 }
 
-export async function streamAgentExecution({ agentId, planMessage, context, onEvent }) {
+export async function streamAgentExecution({ agentId, planMessage, context, demoMode = false, onEvent }) {
   const response = await fetch("/api/agents/stream", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...buildRuntimeHeaders(demoMode),
+    },
     body: JSON.stringify({ agentId, planMessage, context }),
   });
 

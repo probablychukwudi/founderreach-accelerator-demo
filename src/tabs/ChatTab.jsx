@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AGENT_BY_ID, C, SUGGESTIONS } from "../lib/founderReachCore";
 import { deriveWorkspaceUpdates, makeId } from "../lib/workspace";
 import { orchestrate, streamAgentExecution } from "../services/api";
@@ -251,7 +251,21 @@ function AgentMessage({ message }) {
   );
 }
 
-export function ChatTab({ onWorkspaceUpdates, notify, runningAgents, setAgentSignals, setRunningAgents, status }) {
+function sleep(ms) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
+}
+
+export function ChatTab({
+  demoPrompt,
+  demoRunId,
+  mode,
+  onWorkspaceUpdates,
+  notify,
+  runningAgents,
+  setAgentSignals,
+  setRunningAgents,
+  status,
+}) {
   const [messages, setMessages] = useState([
     {
       id: "system-online",
@@ -266,7 +280,7 @@ export function ChatTab({ onWorkspaceUpdates, notify, runningAgents, setAgentSig
       isTyping: false,
       lines: [
         "Welcome to FounderReach. This is your founder-and-creator operating system with strategy, research, outreach, publishing, and media agents working from one workspace.",
-        "Use the suggestions below or describe what you want to build, raise, publish, or automate.",
+        "Use the suggestions below, switch into Demo Mode, or describe what you want to build, raise, publish, or automate.",
       ],
     },
   ]);
@@ -275,6 +289,9 @@ export function ChatTab({ onWorkspaceUpdates, notify, runningAgents, setAgentSig
   const [history, setHistory] = useState([]);
   const inputRef = useRef(null);
   const bottomRef = useRef(null);
+  const handledDemoRunIdRef = useRef(0);
+
+  const isDemoMode = mode === "Demo Mode";
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -288,169 +305,197 @@ export function ChatTab({ onWorkspaceUpdates, notify, runningAgents, setAgentSig
     [status.services]
   );
 
-  function pushMessage(next) {
+  const pushMessage = useCallback((next) => {
     setMessages((current) => [...current, next]);
-  }
+  }, []);
 
-  function updateMessage(id, patch) {
+  const updateMessage = useCallback((id, patch) => {
     setMessages((current) => current.map((message) => (message.id === id ? { ...message, ...patch } : message)));
-  }
+  }, []);
 
-  async function runPrompt() {
-    const prompt = input.trim();
-    if (!prompt || busy) return;
-
-    setBusy(true);
-    setInput("");
-    pushMessage({ id: makeId("user"), type: "founder", text: prompt });
-
-    let plan;
-    try {
-      plan = await orchestrate(prompt, history);
-    } catch (error) {
-      setBusy(false);
-      notify(error.message, "error");
-      return;
-    }
-
-    setHistory((current) => [...current, { role: "user", content: prompt }]);
-    pushMessage({
-      id: makeId("system"),
-      type: "system",
-      text: `Routing to ${plan.agents.length} agents across ${[...new Set(plan.agents.map((entry) => entry.api.toUpperCase()))].join(", ")}.`,
-    });
-
-    setRunningAgents([]);
-    setAgentSignals(
-      Object.fromEntries(plan.agents.map((entry) => [entry.agent, "pending"]))
-    );
-
-    const placeholders = {};
-    plan.agents.forEach((entry) => {
-      const id = makeId(entry.agent);
-      placeholders[entry.agent] = id;
+  const executePlan = useCallback(
+    async (plan, { demoMode = false } = {}) => {
       pushMessage({
-        id,
-        type: "agent",
-        agentId: entry.agent,
-        api: entry.api,
-        isTyping: true,
-        lines: [entry.message],
-        progress: "Queued",
+        id: makeId("system"),
+        type: "system",
+        text: `Routing to ${plan.agents.length} agents across ${[...new Set(plan.agents.map((entry) => entry.api.toUpperCase()))].join(", ")}.`,
       });
-    });
 
-    try {
-      await Promise.all(
-        plan.agents.map(async (entry) => {
-          const placeholderId = placeholders[entry.agent];
-          const resultEnvelope = {};
+      setRunningAgents([]);
+      setAgentSignals(Object.fromEntries(plan.agents.map((entry) => [entry.agent, "pending"])));
 
-          await streamAgentExecution({
-            agentId: entry.agent,
-            planMessage: entry.message,
-            context: plan.context,
-            onEvent: ({ event, data }) => {
-              if (event === "started") {
-                setRunningAgents((current) =>
-                  current.includes(entry.agent) ? current : [...current, entry.agent]
-                );
-                setAgentSignals((current) => {
-                  const next = { ...current };
-                  delete next[entry.agent];
-                  return next;
-                });
-                updateMessage(placeholderId, { progress: data.text || "Started" });
-              }
-              if (event === "progress") {
-                setRunningAgents((current) =>
-                  current.includes(entry.agent) ? current : [...current, entry.agent]
-                );
-                setAgentSignals((current) => {
-                  const next = { ...current };
-                  delete next[entry.agent];
-                  return next;
-                });
-                updateMessage(placeholderId, { progress: data.text });
-              }
-              if (event === "final") {
-                resultEnvelope.result = data.result;
-                resultEnvelope.streamUrl = data.streamUrl;
-                resultEnvelope.imageUrl = data.imageUrl;
-                resultEnvelope.videoUrl = data.videoUrl;
-                setRunningAgents((current) =>
-                  current.filter((agentId) => agentId !== entry.agent)
-                );
-                setAgentSignals((current) => {
-                  const next = { ...current };
-                  if (data.result?.error) next[entry.agent] = "issue";
-                  else delete next[entry.agent];
-                  return next;
-                });
-                updateMessage(placeholderId, {
-                  isTyping: false,
-                  progress: data.summary || "Complete",
-                  result: data.result,
-                  streamUrl: data.streamUrl,
-                  imageUrl: data.imageUrl,
-                  videoUrl: data.videoUrl,
-                });
-              }
-            },
-          });
+      const placeholders = {};
+      plan.agents.forEach((entry) => {
+        const id = makeId(entry.agent);
+        placeholders[entry.agent] = id;
+        pushMessage({
+          id,
+          type: "agent",
+          agentId: entry.agent,
+          api: entry.api,
+          isTyping: true,
+          lines: [entry.message],
+          progress: demoMode ? "Queued for guided demo" : "Queued",
+        });
+      });
 
-          onWorkspaceUpdates(deriveWorkspaceUpdates(entry.agent, resultEnvelope.result));
-        })
-      );
+      const runEntry = async (entry) => {
+        const placeholderId = placeholders[entry.agent];
+        const resultEnvelope = {};
+
+        await streamAgentExecution({
+          agentId: entry.agent,
+          planMessage: entry.message,
+          context: plan.context,
+          demoMode,
+          onEvent: ({ event, data }) => {
+            if (event === "started") {
+              setRunningAgents((current) => (current.includes(entry.agent) ? current : [...current, entry.agent]));
+              setAgentSignals((current) => {
+                const next = { ...current };
+                delete next[entry.agent];
+                return next;
+              });
+              updateMessage(placeholderId, { progress: data.text || "Started" });
+            }
+            if (event === "progress") {
+              setRunningAgents((current) => (current.includes(entry.agent) ? current : [...current, entry.agent]));
+              setAgentSignals((current) => {
+                const next = { ...current };
+                delete next[entry.agent];
+                return next;
+              });
+              updateMessage(placeholderId, { progress: data.text });
+            }
+            if (event === "final") {
+              resultEnvelope.result = data.result;
+              resultEnvelope.streamUrl = data.streamUrl;
+              resultEnvelope.imageUrl = data.imageUrl;
+              resultEnvelope.videoUrl = data.videoUrl;
+              setRunningAgents((current) => current.filter((agentId) => agentId !== entry.agent));
+              setAgentSignals((current) => {
+                const next = { ...current };
+                if (data.result?.error) next[entry.agent] = "issue";
+                else delete next[entry.agent];
+                return next;
+              });
+              updateMessage(placeholderId, {
+                isTyping: false,
+                progress: data.summary || "Complete",
+                result: data.result,
+                streamUrl: data.streamUrl,
+                imageUrl: data.imageUrl,
+                videoUrl: data.videoUrl,
+              });
+            }
+          },
+        });
+
+        onWorkspaceUpdates(deriveWorkspaceUpdates(entry.agent, resultEnvelope.result));
+      };
+
+      if (demoMode) {
+        for (const entry of plan.agents) {
+          await runEntry(entry);
+          await sleep(520);
+        }
+      } else {
+        await Promise.all(plan.agents.map((entry) => runEntry(entry)));
+      }
 
       pushMessage({
         id: makeId("system-complete"),
         type: "system",
-        text: "All requested agents finished. New outputs have been added to CRM, Vault, and Calendar.",
+        text: demoMode
+          ? "Demo run complete. FounderReach updated CRM, Calendar, and Vault with fabricated but realistic outputs."
+          : "All requested agents finished. New outputs have been added to CRM, Vault, and Calendar.",
       });
       setHistory((current) => [...current, ...plan.agents.map((entry) => ({ role: "assistant", agentId: entry.agent, content: entry.message }))]);
-    } catch (error) {
-      setAgentSignals((current) => {
-        const next = { ...current };
-        plan?.agents?.forEach(({ agent }) => {
-          next[agent] = "issue";
+    },
+    [onWorkspaceUpdates, pushMessage, setAgentSignals, setRunningAgents, updateMessage]
+  );
+
+  const runPromptWithText = useCallback(
+    async (rawPrompt) => {
+      const prompt = rawPrompt.trim();
+      if (!prompt || busy) return;
+
+      setBusy(true);
+      setInput("");
+      pushMessage({ id: makeId("user"), type: "founder", text: prompt });
+
+      let plan;
+      try {
+        plan = await orchestrate(prompt, history, { demoMode: isDemoMode });
+      } catch (error) {
+        setBusy(false);
+        notify(error.message, "error");
+        return;
+      }
+
+      setHistory((current) => [...current, { role: "user", content: prompt }]);
+
+      try {
+        await executePlan(plan, { demoMode: isDemoMode });
+      } catch (error) {
+        setAgentSignals((current) => {
+          const next = { ...current };
+          plan?.agents?.forEach(({ agent }) => {
+            next[agent] = "issue";
+          });
+          return next;
         });
-        return next;
-      });
-      notify(error.message, "error");
-      pushMessage({
-        id: makeId("guardrail-error"),
-        type: "agent",
-        agentId: "guardrail",
-        isTyping: false,
-        api: "fetch",
-        lines: [`One or more agent runs failed: ${error.message}`],
-      });
-    } finally {
-      setRunningAgents([]);
-      setBusy(false);
-      inputRef.current?.focus();
-    }
-  }
+        notify(error.message, "error");
+        pushMessage({
+          id: makeId("guardrail-error"),
+          type: "agent",
+          agentId: "guardrail",
+          isTyping: false,
+          api: "fetch",
+          lines: [`One or more agent runs failed: ${error.message}`],
+        });
+      } finally {
+        setRunningAgents([]);
+        setBusy(false);
+        inputRef.current?.focus();
+      }
+    },
+    [busy, executePlan, history, isDemoMode, notify, pushMessage, setAgentSignals, setRunningAgents]
+  );
+
+  useEffect(() => {
+    if (!demoRunId) return;
+    if (!isDemoMode) return;
+    if (handledDemoRunIdRef.current === demoRunId) return;
+
+    handledDemoRunIdRef.current = demoRunId;
+    runPromptWithText(demoPrompt);
+  }, [demoPrompt, demoRunId, isDemoMode, runPromptWithText]);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", minWidth: 0 }}>
+    <div data-tour="chat-root" style={{ display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", minWidth: 0 }}>
       <div
         style={{
           padding: "8px 18px",
-          background: missingKeys.length ? "#fef3cd" : C.accentL,
-          color: missingKeys.length ? C.warn : C.accent,
-          borderBottom: `1px solid ${missingKeys.length ? "#f8dc8c" : C.accentM}`,
+          background: isDemoMode ? "#fff7e8" : missingKeys.length ? "#fef3cd" : C.accentL,
+          color: isDemoMode ? "#b45309" : missingKeys.length ? C.warn : C.accent,
+          borderBottom: `1px solid ${isDemoMode ? "#f2d39b" : missingKeys.length ? "#f8dc8c" : C.accentM}`,
           fontSize: 12,
           display: "flex",
           alignItems: "center",
           gap: 8,
         }}
       >
-        <Icon name={missingKeys.length ? "slash" : "check"} size={13} color={missingKeys.length ? C.warn : C.accent} />
-        {missingKeys.length
-          ? `Live integrations still missing: ${missingKeys.join(", ")}. The app is using safe local simulation where needed.`
-          : "All configured services detected. Live mode is ready."}
+        <Icon
+          name={isDemoMode ? "play" : missingKeys.length ? "slash" : "check"}
+          size={13}
+          color={isDemoMode ? "#b45309" : missingKeys.length ? C.warn : C.accent}
+        />
+        {isDemoMode
+          ? "Demo Mode is active. FounderReach will fabricate a slower showcase run so new visitors can understand the full workflow."
+          : missingKeys.length
+            ? `Live integrations still missing: ${missingKeys.join(", ")}. The app is using safe local simulation where needed.`
+            : "All configured services detected. Live mode is ready."}
       </div>
 
       <div style={{ flex: 1, overflowY: "auto", padding: "20px 22px 10px", background: C.surface }}>
@@ -465,6 +510,7 @@ export function ChatTab({ onWorkspaceUpdates, notify, runningAgents, setAgentSig
       <div style={{ padding: "14px 22px 18px", borderTop: `1px solid ${C.border}`, background: C.surface }}>
         <div style={{ display: "flex", gap: 10, alignItems: "flex-end", marginBottom: 10 }}>
           <div
+            data-tour="chat-compose"
             style={{
               flex: 1,
               border: `1.5px solid ${C.border}`,
@@ -485,10 +531,10 @@ export function ChatTab({ onWorkspaceUpdates, notify, runningAgents, setAgentSig
               onKeyDown={(event) => {
                 if (event.key === "Enter" && !event.shiftKey) {
                   event.preventDefault();
-                  runPrompt();
+                  runPromptWithText(input);
                 }
               }}
-              placeholder="Describe what you're building, raising, publishing, or automating."
+              placeholder={isDemoMode ? "Ask for a fabricated showcase run or press Play demo." : "Describe what you're building, raising, publishing, or automating."}
               style={{
                 flex: 1,
                 border: "none",
@@ -507,7 +553,8 @@ export function ChatTab({ onWorkspaceUpdates, notify, runningAgents, setAgentSig
             />
           </div>
           <button
-            onClick={runPrompt}
+            data-tour="chat-run"
+            onClick={() => runPromptWithText(input)}
             disabled={!input.trim() || busy}
             style={{
               minWidth: 110,

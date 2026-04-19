@@ -30,7 +30,7 @@ export function CRMTab({ contacts, onSendEmail, onBookMeeting }) {
   const filtered = filter === "All" ? contacts : contacts.filter((contact) => contact.type === filter);
 
   return (
-    <div style={{ display: "flex", flex: 1, overflow: "hidden", minWidth: 0 }}>
+    <div data-tour="crm-root" style={{ display: "flex", flex: 1, overflow: "hidden", minWidth: 0 }}>
       <div style={{ width: 300, borderRight: `1px solid ${C.border}`, background: C.surface, display: "flex", flexDirection: "column", flexShrink: 0 }}>
         <div style={{ padding: "16px 14px 10px", borderBottom: `1px solid ${C.border}` }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 10 }}>

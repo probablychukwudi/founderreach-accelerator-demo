@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FounderReachLogo } from "./FounderReachLogo";
 import { Icon } from "./Icon";
 import { AGENTS, AGENT_BY_ID, C, getAgentGuide, getModeAgents, GROUPS_ORDER, OPERATING_MODES } from "../lib/founderReachCore";
@@ -31,6 +31,14 @@ const SIGNAL_STYLES = {
   },
 };
 
+const SIGNAL_LABELS = {
+  idle: "Idle",
+  mode: "Mode active",
+  running: "Running now",
+  pending: "Pending",
+  issue: "Needs attention",
+};
+
 const getSignalDotStyle = (signal) => ({
   width: 7,
   height: 7,
@@ -40,16 +48,24 @@ const getSignalDotStyle = (signal) => ({
   flexShrink: 0,
 });
 
-const SIGNAL_LABELS = {
-  idle: "Idle",
-  mode: "Mode active",
-  running: "Running now",
-  pending: "Pending",
-  issue: "Needs attention",
-};
-
-export function Shell({ agentSignals = {}, mode, onOpenSettings, runningAgents, setMode, setTab, status, tab, children }) {
+export function Shell({
+  agentSignals = {},
+  demoPlaying,
+  mode,
+  onOpenSettings,
+  onSignOut,
+  onStartDemo,
+  runningAgents,
+  setMode,
+  setTab,
+  status,
+  tab,
+  userLabel,
+  children,
+}) {
   const [inspectedAgentId, setInspectedAgentId] = useState("orchestrator");
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const menuRef = useRef(null);
 
   const tabs = [
     { id: "chat", label: "Chat" },
@@ -61,6 +77,19 @@ export function Shell({ agentSignals = {}, mode, onOpenSettings, runningAgents, 
   const modeAgents = useMemo(() => new Set(getModeAgents(mode)), [mode]);
   const inspectedAgent = AGENT_BY_ID[inspectedAgentId] || AGENT_BY_ID[getModeAgents(mode)[0]] || AGENT_BY_ID.orchestrator;
   const inspectedGuide = getAgentGuide(inspectedAgent.id);
+  const isDemoMode = mode === "Demo Mode";
+
+  useEffect(() => {
+    if (!userMenuOpen) return undefined;
+
+    const closeIfOutside = (event) => {
+      if (menuRef.current?.contains(event.target)) return;
+      setUserMenuOpen(false);
+    };
+
+    document.addEventListener("mousedown", closeIfOutside);
+    return () => document.removeEventListener("mousedown", closeIfOutside);
+  }, [userMenuOpen]);
 
   const getSignalState = (agentId) => {
     if (runningAgents.has(agentId)) return "running";
@@ -71,6 +100,7 @@ export function Shell({ agentSignals = {}, mode, onOpenSettings, runningAgents, 
   };
 
   const inspectedSignal = getSignalState(inspectedAgent.id);
+  const avatarLabel = userLabel.startsWith("Personal") ? "PB" : "GS";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh", background: C.base, overflow: "hidden" }}>
@@ -99,6 +129,7 @@ export function Shell({ agentSignals = {}, mode, onOpenSettings, runningAgents, 
             return (
               <button
                 key={item.id}
+                data-tour={`nav-${item.id}`}
                 onClick={() => setTab(item.id)}
                 style={{
                   height: "100%",
@@ -164,11 +195,34 @@ export function Shell({ agentSignals = {}, mode, onOpenSettings, runningAgents, 
               }}
             />
             <span style={{ fontSize: 11, fontWeight: 700, color: status.workspaceMode === "local" ? C.muted : C.accent }}>
-              {status.workspaceMode === "local" ? "Demo mode" : "Live mode"}
+              {status.workspaceMode === "local" ? "Demo-safe" : "Live-ready"}
             </span>
           </div>
 
+          {isDemoMode && (
+            <button
+              data-tour="demo-play"
+              onClick={onStartDemo}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 7,
+                borderRadius: 999,
+                border: demoPlaying ? `1px solid ${C.accentM}` : `1px solid ${C.border}`,
+                background: demoPlaying ? C.accentL : C.surface,
+                color: demoPlaying ? C.accent : C.text,
+                padding: "7px 11px",
+                fontSize: 11,
+                fontWeight: 800,
+              }}
+            >
+              <Icon name={demoPlaying ? "pause" : "play"} size={12} color={demoPlaying ? C.accent : C.muted} />
+              {demoPlaying ? "Playing demo" : "Play demo"}
+            </button>
+          )}
+
           <div
+            data-tour="mode-select"
             style={{
               display: "flex",
               alignItems: "center",
@@ -179,7 +233,7 @@ export function Shell({ agentSignals = {}, mode, onOpenSettings, runningAgents, 
               background: C.base,
             }}
           >
-            <div style={{ width: 7, height: 7, borderRadius: "50%", background: C.accent }} />
+            <div style={{ width: 7, height: 7, borderRadius: "50%", background: isDemoMode ? "#f59e0b" : C.accent }} />
             <select
               value={mode}
               onChange={(event) => setMode(event.target.value)}
@@ -206,31 +260,110 @@ export function Shell({ agentSignals = {}, mode, onOpenSettings, runningAgents, 
           <button style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex" }}>
             <Icon name="bell" size={16} color={C.muted} />
           </button>
-          <button onClick={onOpenSettings} style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex" }}>
+          <button
+            data-tour="settings-button"
+            onClick={onOpenSettings}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: 4, display: "flex" }}
+          >
             <Icon name="settings" size={16} color={C.muted} />
           </button>
-          <div
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: "50%",
-              background: C.base,
-              border: `1px solid ${C.border}`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: C.text,
-              fontSize: 10,
-              fontWeight: 800,
-            }}
-          >
-            FR
+
+          <div ref={menuRef} style={{ position: "relative" }}>
+            <button
+              data-tour="user-menu"
+              onClick={() => setUserMenuOpen((current) => !current)}
+              style={{
+                width: 30,
+                height: 30,
+                borderRadius: "50%",
+                background: C.base,
+                border: `1px solid ${C.border}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: C.text,
+                fontSize: 10,
+                fontWeight: 800,
+              }}
+            >
+              {avatarLabel}
+            </button>
+
+            {userMenuOpen && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 38,
+                  right: 0,
+                  width: 230,
+                  borderRadius: 16,
+                  border: `1px solid ${C.border}`,
+                  background: C.surface,
+                  boxShadow: "0 18px 50px rgba(9,31,23,0.14)",
+                  padding: 10,
+                  zIndex: 20,
+                }}
+              >
+                <div style={{ padding: "8px 10px 10px", borderBottom: `1px solid ${C.border}`, marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 800, color: C.text }}>{userLabel}</div>
+                  <div style={{ fontSize: 11, color: C.muted, marginTop: 3 }}>
+                    Sign out clears local data and browser-saved keys for this session.
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    onStartDemo();
+                  }}
+                  style={{
+                    width: "100%",
+                    border: "none",
+                    borderRadius: 12,
+                    background: C.base,
+                    color: C.text,
+                    padding: "9px 10px",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 6,
+                  }}
+                >
+                  <Icon name="play" size={12} color={C.muted} />
+                  Replay demo walkthrough
+                </button>
+                <button
+                  onClick={() => {
+                    setUserMenuOpen(false);
+                    onSignOut();
+                  }}
+                  style={{
+                    width: "100%",
+                    border: "none",
+                    borderRadius: 12,
+                    background: "#fff3f3",
+                    color: C.danger,
+                    padding: "9px 10px",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <Icon name="close" size={12} color={C.danger} />
+                  Sign out and clear session
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
       <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
         <div
+          data-tour="agent-rail"
           style={{
             width: 198,
             background: C.sidebar,
@@ -259,6 +392,7 @@ export function Shell({ agentSignals = {}, mode, onOpenSettings, runningAgents, 
           </div>
 
           <div
+            data-tour="agent-inspector"
             style={{
               margin: "0 12px 12px",
               padding: "12px 12px 13px",

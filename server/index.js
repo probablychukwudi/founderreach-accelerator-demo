@@ -6,7 +6,9 @@ import {
   buildPlan,
   executeAgentRun,
   getWorkspaceStatus,
+  parseClientRuntimeConfig,
   publishAction,
+  resolveRuntimeEnv,
   sendEmailAction,
 } from "../lib/founderReachBackend.js";
 
@@ -16,15 +18,23 @@ const port = Number(process.env.PORT || 3001);
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
 
+function runtimeEnvForRequest(req) {
+  const { apiKeys, demoMode } = parseClientRuntimeConfig(
+    req.header("x-founderreach-keys"),
+    req.header("x-founderreach-demo")
+  );
+  return resolveRuntimeEnv(process.env, { apiKeys, demoMode });
+}
+
 app.get("/api/status", (_req, res) => {
-  res.json(getWorkspaceStatus());
+  res.json(getWorkspaceStatus(runtimeEnvForRequest(_req)));
 });
 
 app.post("/api/orchestrate", async (req, res) => {
   try {
     const prompt = req.body?.prompt || "";
     const history = req.body?.history || [];
-    res.json(await buildPlan(prompt, history));
+    res.json(await buildPlan(prompt, history, runtimeEnvForRequest(req)));
   } catch (error) {
     res.status(500).send(error.message);
   }
@@ -43,7 +53,7 @@ app.post("/api/agents/stream", async (req, res) => {
 
   try {
     const { agentId, context } = req.body || {};
-    const result = await executeAgentRun(agentId, context, send);
+    const result = await executeAgentRun(agentId, context, send, runtimeEnvForRequest(req));
     send("final", result);
     send("done", { ok: true });
   } catch (error) {
@@ -58,7 +68,7 @@ app.post("/api/agents/stream", async (req, res) => {
 
 app.post("/api/actions/send-email", async (req, res) => {
   try {
-    res.json(await sendEmailAction(req.body?.contact));
+    res.json(await sendEmailAction(req.body?.contact, runtimeEnvForRequest(req)));
   } catch (error) {
     res.status(500).send(error.message);
   }

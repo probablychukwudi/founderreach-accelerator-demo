@@ -15,7 +15,7 @@ export function CalendarTab({ events }) {
   const allEvents = [...staticEvents, ...events];
 
   return (
-    <div style={{ display: "flex", flex: 1, overflow: "hidden", minWidth: 0 }}>
+    <div data-tour="calendar-root" style={{ display: "flex", flex: 1, overflow: "hidden", minWidth: 0 }}>
       <div style={{ width: 230, borderRight: `1px solid ${C.border}`, background: C.surface, padding: 16, overflowY: "auto", flexShrink: 0 }}>
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -24,7 +24,7 @@ export function CalendarTab({ events }) {
             <button style={{ border: "none", background: "none", color: C.muted, padding: 0 }}>›</button>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, textAlign: "center" }}>
-            {["M", "T", "W", "T", "F", "S", "S"].map((day) => <div key={day} style={{ fontSize: 9, color: C.hint, fontWeight: 700, padding: "2px 0" }}>{day}</div>)}
+            {["M", "T", "W", "T", "F", "S", "S"].map((day, index) => <div key={`mini-day-${index}`} style={{ fontSize: 9, color: C.hint, fontWeight: 700, padding: "2px 0" }}>{day}</div>)}
             {[30, 31, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 1, 2, 3].map((date, index) => {
               const active = date === 18 && index >= 14 && index <= 20;
               return (
@@ -73,7 +73,7 @@ export function CalendarTab({ events }) {
           <div style={{ display: "grid", gridTemplateColumns: "60px repeat(5, minmax(160px, 1fr))", borderBottom: `1px solid ${C.border}` }}>
             <div />
             {days.map((day, index) => (
-              <div key={day} style={{ padding: "10px 6px", textAlign: "center", borderLeft: `1px solid ${C.border}` }}>
+              <div key={`header-${day}-${index}`} style={{ padding: "10px 6px", textAlign: "center", borderLeft: `1px solid ${C.border}` }}>
                 <div style={{ fontSize: 11, color: C.muted }}>{day}</div>
                 <div style={{ width: 30, height: 30, borderRadius: "50%", margin: "6px auto 0", display: "grid", placeItems: "center", fontSize: 16, fontWeight: 800, color: index === 4 ? C.accent : C.text, background: index === 4 ? C.accentL : "transparent" }}>{dates[index]}</div>
               </div>
@@ -85,7 +85,7 @@ export function CalendarTab({ events }) {
               {times.map((time) => <div key={time} style={{ height: 58, borderBottom: `1px solid ${C.border}`, paddingRight: 8, paddingTop: 4, textAlign: "right" }}><span style={{ fontSize: 10, color: C.hint }}>{time}</span></div>)}
             </div>
             {days.map((day, dayIndex) => (
-              <div key={day} style={{ borderLeft: `1px solid ${C.border}`, position: "relative" }}>
+              <div key={`column-${day}-${dayIndex}`} style={{ borderLeft: `1px solid ${C.border}`, position: "relative" }}>
                 {times.map((time) => <div key={`${day}-${time}`} style={{ height: 58, borderBottom: `1px solid ${C.border}` }} />)}
                 {allEvents.filter((event) => event.day === dayIndex).map((event) => (
                   <div key={event.id || `${event.title}-${event.slot}`} style={{ position: "absolute", left: 6, right: 6, top: event.slot * 58 + 5, minHeight: 48, borderRadius: 12, padding: "6px 9px", background: event.bg, border: `1px solid ${event.bg}`, color: event.color, boxShadow: "0 8px 18px rgba(9,31,23,0.08)" }}>

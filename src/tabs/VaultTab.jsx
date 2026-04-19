@@ -51,7 +51,7 @@ export function VaultTab({ assets, notify, onPublishAsset }) {
   }
 
   return (
-    <div style={{ display: "flex", flex: 1, overflow: "hidden", minWidth: 0 }}>
+    <div data-tour="vault-root" style={{ display: "flex", flex: 1, overflow: "hidden", minWidth: 0 }}>
       <div style={{ width: 246, borderRight: `1px solid ${C.border}`, background: "#f5f7f5", overflowY: "auto", flexShrink: 0 }}>
         <div style={{ padding: "14px 14px 8px", fontSize: 10, fontWeight: 800, color: C.muted, textTransform: "uppercase", letterSpacing: ".08em" }}>Vault</div>
         {VAULT_SECTIONS.map((section) => {

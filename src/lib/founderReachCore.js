@@ -49,6 +49,7 @@ export const P = {
   globe: "M10 1.667a8.333 8.333 0 100 16.666A8.333 8.333 0 0010 1.667zM1.667 10h16.666M10 1.667a12.917 12.917 0 010 16.666M10 1.667a12.917 12.917 0 000 16.666",
   copy: "M13.333 1.667H4.167A1.667 1.667 0 002.5 3.333v10h1.667V3.333h9.166V1.667zm2.5 3.333H7.5A1.667 1.667 0 005.833 6.667V16.667A1.667 1.667 0 007.5 18.333h8.333A1.667 1.667 0 0017.5 16.667V6.667A1.667 1.667 0 0015.833 5z",
   play: "M3.333 3.333L16.667 10 3.333 16.667V3.333z",
+  pause: "M5.833 3.333h2.5v13.334h-2.5zM11.667 3.333h2.5v13.334h-2.5z",
   flash: "M11.667 1.667L3.333 11.667h6.667l-1.667 6.666 8.334-10H10l1.667-6.666z",
   user: "M10 9.167a3.333 3.333 0 100-6.667 3.333 3.333 0 000 6.667zM1.667 17.5a8.333 8.333 0 0116.666 0",
   calendar2: "M13.333 1.667v3.333M6.667 1.667v3.333M2.5 8.333h15M10 12.5h.008M10 15.833h.008M6.667 12.5h.008M6.667 15.833h.008M13.333 12.5h.008",
@@ -152,6 +153,7 @@ export const SUGGESTIONS = [
 ];
 
 export const OPERATING_MODES = [
+  "Demo Mode",
   "Creator Mode",
   "VC Mode",
   "Research Mode",
@@ -161,6 +163,7 @@ export const OPERATING_MODES = [
 ];
 
 export const MODE_AGENT_IDS = {
+  "Demo Mode": ["orchestrator", "vc", "content_dir", "tweets", "newsletter", "designer", "scheduler", "archivist", "publisher", "video_prod"],
   "Creator Mode": ["orchestrator", "content_dir", "tweets", "newsletter", "video_prod", "podcast", "course_builder", "designer", "imagegen", "videogen", "publisher", "scheduler", "archivist", "analytics", "seo"],
   "VC Mode": ["orchestrator", "vc", "outreach", "research", "sales", "guardrail", "pm"],
   "Research Mode": ["orchestrator", "research", "pm", "analytics", "seo", "archivist", "guardrail"],

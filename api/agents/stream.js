@@ -1,4 +1,4 @@
-import { executeAgentRun } from "../../lib/founderReachBackend.js";
+import { executeAgentRun, parseClientRuntimeConfig, resolveRuntimeEnv } from "../../lib/founderReachBackend.js";
 
 export default {
   async fetch(request) {
@@ -7,6 +7,10 @@ export default {
     }
 
     const body = await request.json().catch(() => ({}));
+    const runtime = parseClientRuntimeConfig(
+      request.headers.get("x-founderreach-keys"),
+      request.headers.get("x-founderreach-demo")
+    );
     const encoder = new TextEncoder();
 
     const stream = new ReadableStream({
@@ -17,7 +21,12 @@ export default {
         };
 
         try {
-          const result = await executeAgentRun(body?.agentId, body?.context, send);
+          const result = await executeAgentRun(
+            body?.agentId,
+            body?.context,
+            send,
+            resolveRuntimeEnv(process.env, runtime)
+          );
           send("final", result);
           send("done", { ok: true });
         } catch (error) {

@@ -1,4 +1,4 @@
-import { sendEmailAction } from "../../lib/founderReachBackend.js";
+import { parseClientRuntimeConfig, resolveRuntimeEnv, sendEmailAction } from "../../lib/founderReachBackend.js";
 
 export default {
   async fetch(request) {
@@ -8,7 +8,11 @@ export default {
 
     try {
       const body = await request.json().catch(() => ({}));
-      return Response.json(await sendEmailAction(body?.contact));
+      const runtime = parseClientRuntimeConfig(
+        request.headers.get("x-founderreach-keys"),
+        request.headers.get("x-founderreach-demo")
+      );
+      return Response.json(await sendEmailAction(body?.contact, resolveRuntimeEnv(process.env, runtime)));
     } catch (error) {
       return new Response(error.message, { status: 500 });
     }

@@ -27,6 +27,13 @@ export function makeId(prefix = "fr") {
   return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function slugify(value) {
+  return String(value || "item")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+}
+
 export function buildAssetText(asset) {
   if (!asset) return "";
   if (asset.type === "Tweet" && asset.content?.thread) return asset.content.thread.map((tweet) => `${tweet.n}. ${tweet.text}`).join("\n\n");
@@ -54,8 +61,16 @@ export function deriveWorkspaceUpdates(agentId, result) {
   const events = [];
   const agent = AGENT_BY_ID[agentId];
   const stamp = "just now";
-  const addContact = (entry) => contacts.push({ id: makeId("contact"), lastContact: stamp, ...entry });
-  const addAsset = (entry) => assets.push({ id: makeId("asset"), time: stamp, agent: agentId, ...entry });
+  const addContact = (entry) => {
+    const stableId = entry.email
+      ? `contact-${slugify(entry.email)}`
+      : `contact-${slugify(`${entry.name}-${entry.company}-${entry.type}`)}`;
+    contacts.push({ id: stableId, lastContact: stamp, ...entry });
+  };
+  const addAsset = (entry) => {
+    const stableId = `asset-${slugify(`${entry.section}-${entry.type}-${entry.name}`)}`;
+    assets.push({ id: stableId, time: stamp, agent: agentId, ...entry });
+  };
 
   if (!result || typeof result !== "object") return { contacts, assets, events };
 
@@ -89,7 +104,15 @@ export function deriveWorkspaceUpdates(agentId, result) {
     result.weekly_schedule.forEach((entry, index) => {
       const day = (entry.day || "").toLowerCase();
       const mappedDay = day.startsWith("mon") ? 0 : day.startsWith("tue") ? 1 : day.startsWith("wed") ? 2 : day.startsWith("thu") ? 3 : day.startsWith("fri") ? 4 : index % 5;
-      events.push({ id: makeId("event"), day: mappedDay, slot: 1 + (index % 7), title: entry.tasks?.[0] || entry.batch_type || "Content block", bg: "#258530", color: "#fff" });
+      const title = entry.tasks?.[0] || entry.batch_type || "Content block";
+      events.push({
+        id: `event-${slugify(`${mappedDay}-${1 + (index % 7)}-${title}`)}`,
+        day: mappedDay,
+        slot: 1 + (index % 7),
+        title,
+        bg: "#258530",
+        color: "#fff",
+      });
     });
   }
 

@@ -1,4 +1,4 @@
-import { getWorkspaceStatus } from "../lib/founderReachBackend.js";
+import { getWorkspaceStatus, parseClientRuntimeConfig, resolveRuntimeEnv } from "../lib/founderReachBackend.js";
 
 export default {
   async fetch(request) {
@@ -6,6 +6,11 @@ export default {
       return new Response("Method Not Allowed", { status: 405 });
     }
 
-    return Response.json(getWorkspaceStatus());
+    const runtime = parseClientRuntimeConfig(
+      request.headers.get("x-founderreach-keys"),
+      request.headers.get("x-founderreach-demo")
+    );
+
+    return Response.json(getWorkspaceStatus(resolveRuntimeEnv(process.env, runtime)));
   },
 };
